@@ -1,0 +1,553 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #0a2e1c 0%, #05140a 100%);
+    min-height: 100vh;
+    color: white;
+    padding: 20px;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* Telas */
+.screen {
+    display: none;
+    animation: fadeIn 0.5s;
+}
+
+.screen.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Cards de modo */
+.mode-grid, .league-grid, .tournaments-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 25px;
+    margin: 40px 0;
+}
+
+.mode-card, .league-card, .tournament-card {
+    background: rgba(0,0,0,0.7);
+    border-radius: 25px;
+    padding: 35px 25px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    border: 2px solid transparent;
+}
+
+.mode-card:hover, .league-card:hover, .tournament-card:hover {
+    transform: translateY(-8px);
+    border-color: gold;
+    background: rgba(0,0,0,0.85);
+}
+
+.mode-icon {
+    font-size: 4.5em;
+    margin-bottom: 15px;
+}
+
+.mode-title {
+    font-size: 1.8em;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.mode-desc {
+    font-size: 0.9em;
+    opacity: 0.8;
+}
+
+/* Times Panel */
+.teams-panel {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 25px;
+    margin-bottom: 30px;
+}
+
+.team-container {
+    background: rgba(0,0,0,0.7);
+    border-radius: 20px;
+    padding: 20px;
+}
+
+.team-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.team-select, .formation-select {
+    width: 100%;
+    padding: 12px;
+    background: #1a1a1a;
+    border: 2px solid gold;
+    border-radius: 10px;
+    color: white;
+    font-size: 1em;
+    margin-bottom: 15px;
+    cursor: pointer;
+}
+
+.team-overall {
+    background: rgba(0,0,0,0.5);
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-weight: bold;
+    color: gold;
+}
+
+/* Campo de futebol */
+.field {
+    background: linear-gradient(135deg, #2d5a2c, #1a3a19);
+    border-radius: 20px;
+    padding: 20px;
+    min-height: 450px;
+    position: relative;
+    border: 3px solid white;
+    margin: 15px 0;
+}
+
+.field::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: white;
+}
+
+.field::after {
+    content: "⚽";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 2em;
+    opacity: 0.3;
+}
+
+.positions-container {
+    position: relative;
+    min-height: 380px;
+}
+
+.player-on-field {
+    position: absolute;
+    background: rgba(0,0,0,0.85);
+    border: 2px solid gold;
+    border-radius: 50%;
+    width: 65px;
+    height: 65px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.7em;
+    text-align: center;
+    transform: translateX(-50%);
+    z-index: 10;
+}
+
+.player-on-field:hover {
+    transform: translateX(-50%) scale(1.05);
+    border-color: #ff6b00;
+}
+
+.player-on-field.dragging {
+    opacity: 0.5;
+}
+
+.player-number {
+    font-weight: bold;
+    font-size: 1em;
+}
+
+.player-name-field {
+    font-size: 0.6em;
+}
+
+.player-rating {
+    font-size: 0.6em;
+    color: gold;
+}
+
+/* Banco de reservas */
+.bench-section {
+    margin-top: 15px;
+    border-top: 1px solid rgba(255,215,0,0.3);
+    padding-top: 10px;
+}
+
+.bench-title {
+    font-size: 0.9em;
+    color: gold;
+    margin-bottom: 8px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+}
+
+.bench-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 5px;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.bench-player {
+    background: rgba(255,255,255,0.1);
+    padding: 5px 8px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8em;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.bench-player:hover {
+    background: rgba(255,215,0,0.3);
+}
+
+/* Lista de jogadores */
+.players-list {
+    max-height: 200px;
+    overflow-y: auto;
+    margin-top: 10px;
+}
+
+.player-item {
+    background: rgba(255,255,255,0.1);
+    padding: 8px 12px;
+    margin: 3px 0;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.player-item:hover {
+    background: rgba(255,215,0,0.3);
+}
+
+/* Botões de simulação */
+.simulation-buttons {
+    display: flex;
+    gap: 15px;
+    margin: 20px 0;
+    flex-wrap: wrap;
+}
+
+.sim-btn {
+    flex: 1;
+    padding: 15px;
+    font-size: 1.1em;
+    font-weight: bold;
+    border: none;
+    border-radius: 15px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.sim-btn:hover {
+    transform: scale(1.02);
+}
+
+.btn-full {
+    background: linear-gradient(135deg, gold, #ff6b00);
+    color: white;
+}
+
+.btn-minute {
+    background: linear-gradient(135deg, #2196F3, #0b5e7e);
+    color: white;
+}
+
+.btn-ball {
+    background: linear-gradient(135deg, #4CAF50, #1b5e20);
+    color: white;
+}
+
+.btn-step {
+    background: linear-gradient(135deg, #9C27B0, #4a0072);
+    color: white;
+}
+
+/* Área de resultados */
+.result-area {
+    background: rgba(0,0,0,0.85);
+    border-radius: 20px;
+    padding: 25px;
+    margin-top: 20px;
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.score {
+    font-size: 4em;
+    text-align: center;
+    font-weight: bold;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin: 20px 0;
+}
+
+.stat-card {
+    background: rgba(255,255,255,0.1);
+    padding: 15px;
+    border-radius: 15px;
+    text-align: center;
+}
+
+.progress-bar {
+    background: #333;
+    border-radius: 10px;
+    height: 20px;
+    overflow: hidden;
+    margin: 10px 0;
+}
+
+.progress-fill {
+    background: gold;
+    height: 100%;
+    transition: width 0.5s;
+}
+
+.minute-sim {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.minute-event {
+    padding: 8px;
+    margin: 5px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 5px;
+    animation: slideIn 0.3s;
+}
+
+.yellow-card {
+    color: #ffd700;
+    border-left: 4px solid #ffd700;
+}
+
+.red-card {
+    color: #ff4444;
+    border-left: 4px solid #ff4444;
+}
+
+.injury {
+    color: #ff6b6b;
+    border-left: 4px solid #ff6b6b;
+}
+
+.substitution {
+    color: #4fc3f7;
+    border-left: 4px solid #4fc3f7;
+}
+
+.goal-event {
+    color: #4caf50;
+    border-left: 4px solid #4caf50;
+}
+
+/* Jogo das bolinhas */
+.ball-match {
+    background: linear-gradient(135deg, #2d5a2c, #1a3a19);
+    border-radius: 20px;
+    padding: 30px;
+    min-height: 500px;
+    position: relative;
+    border: 3px solid white;
+}
+
+.ball-match::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: white;
+}
+
+.ball-players {
+    position: relative;
+    min-height: 400px;
+}
+
+.ball-player {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7em;
+    font-weight: bold;
+    transform: translateX(-50%);
+    transition: all 0.3s;
+}
+
+.ball-player-time1 {
+    background: radial-gradient(circle, #4CAF50, #1b5e20);
+    color: white;
+}
+
+.ball-player-time2 {
+    background: radial-gradient(circle, #2196F3, #0b5e7e);
+    color: white;
+}
+
+.ball-soccer {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    background: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2em;
+    transform: translate(-50%, -50%);
+    transition: all 0.3s;
+    box-shadow: 0 0 15px white;
+    z-index: 20;
+}
+
+/* Tabelas e calendário */
+.table-container {
+    overflow-x: auto;
+    margin: 20px 0;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: rgba(0,0,0,0.5);
+    border-radius: 15px;
+}
+
+th, td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255,255,255,0.2);
+}
+
+th {
+    background: gold;
+    color: black;
+    font-weight: bold;
+}
+
+.calendar-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.calendar-item {
+    background: rgba(0,0,0,0.5);
+    padding: 12px;
+    border-radius: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.calendar-item.completed {
+    border-left: 4px solid #4CAF50;
+}
+
+.calendar-item.pending {
+    border-left: 4px solid #ff9800;
+}
+
+.top-scorer-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.2);
+}
+
+/* Navegação */
+.back-btn, .close-result {
+    background: #4a4a4a;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 10px;
+    color: white;
+    cursor: pointer;
+    margin: 5px;
+}
+
+.close-result {
+    background: #4CAF50;
+}
+
+/* Animações */
+@keyframes slideIn {
+    from { opacity: 0; transform: translateX(-20px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+    .teams-panel {
+        grid-template-columns: 1fr;
+    }
+    .simulation-buttons {
+        flex-direction: column;
+    }
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    .player-on-field {
+        width: 45px;
+        height: 45px;
+        font-size: 0.5em;
+    }
+    th, td {
+        padding: 8px;
+        font-size: 0.8em;
+    }
+    .mode-title {
+        font-size: 1.2em;
+    }
+    .mode-icon {
+        font-size: 3em;
+    }
+}

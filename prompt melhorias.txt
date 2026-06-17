@@ -1,0 +1,13 @@
+MELHORIAS(simulador):
+- Colocar overall de acordo com jogadores
+- Sistema de substituição
+- Escalação melhorada
+- SIMULAÇÃO MINUTO A MINUTO(aparecer substituições, aparecer nome dos jogadores á estatisticas do campo)
+- SIMULAÇÃO BOLINHA(no 11x11, cronômetro)
+
+MELHORIAS(carreira):
+- Colocar overal de acordo com jogadores
+- Sistema de substituição
+- Escalações melhorada
+- Calendários funcionais e sem repetições 
+- Tabela e artilharias melhoradas

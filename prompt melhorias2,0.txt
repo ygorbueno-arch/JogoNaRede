@@ -1,0 +1,10 @@
+MELHORIAS(simulador):
+-SIMULAÇÃO MINUTO A MINUTO:(redução de cartões,lesões)(aumentação de tempo,substituição)(% de gol por posição)(lances correspondentes aos titulares)
+-SIMULÇÃO 11X11:(redução de cartões,lesões,lances,tempo da partida)(aumentação de substituição)(% de gol por posição)(lances correspondentes aos titulares)(posição certa do GK e mais flúidez da bola 
+
+MELHORIAS(carreira):
+- Colocar overal de acordo com jogadores
+- Sistema de substituição
+- Escalações melhorada
+- Calendários funcionais e sem repetições 
+- Tabela e artilharias melhoradas

@@ -169,6 +169,8 @@
         .config-row label { color: #b0b0b0; flex: 1; }
         .config-row input { width: 70px; }
         .substituted-out { opacity: 0.5; text-decoration: line-through; }
+        .position-group { margin-bottom: 10px; }
+        .position-group h5 { color: #ffd700; font-size: 11px; margin-bottom: 5px; padding: 3px 8px; background: #1a1a2a; border-radius: 4px; display: inline-block; }
         ::-webkit-scrollbar{width:8px}::-webkit-scrollbar-track{background:#1a1a2a}::-webkit-scrollbar-thumb{background:#4a4a8a;border-radius:4px}
     </style>
 </head>
@@ -313,13 +315,13 @@
         // ============================================
         // PERSISTÊNCIA DE DADOS
         // ============================================
-        const STORAGE_KEY = 'simulador_futebol_v6';
+        const STORAGE_KEY = 'simulador_futebol_v7';
         let teamsDataCache = {};
         let editedTeams = new Set();
         
         function saveLS() {
             try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: '6.0', timestamp: new Date().toISOString(), teamsData: teamsDataCache, editedTeams: Array.from(editedTeams) }));
+                localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: '7.0', timestamp: new Date().toISOString(), teamsData: teamsDataCache, editedTeams: Array.from(editedTeams) }));
                 updateSI(true);
             } catch (e) {}
         }
@@ -338,9 +340,33 @@
         }
         
         function resetAllData() { if (confirm('⚠️ Resetar TODOS os dados?')) { if (confirm('CONFIRMA?')) { localStorage.removeItem(STORAGE_KEY); teamsDataCache = {}; editedTeams = new Set(); updateSI(false); } } }
-        function exportData() { const data = { version: '6.0', config: CONFIG, teamsData: teamsDataCache, editedTeams: Array.from(editedTeams) }; const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `simulador_backup_${new Date().toISOString().slice(0,10)}.json`; a.click(); }
+        function exportData() { const data = { version: '7.0', config: CONFIG, teamsData: teamsDataCache, editedTeams: Array.from(editedTeams) }; const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `simulador_backup_${new Date().toISOString().slice(0,10)}.json`; a.click(); }
         function importDataPrompt() { const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.json'; inp.onchange = function(e) { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = function(ev) { try { const d = JSON.parse(ev.target.result); if (d.teamsData && confirm(`Importar ${Object.keys(d.teamsData).length} times?`)) { teamsDataCache = d.teamsData; editedTeams = new Set(d.editedTeams || []); if (d.config) CONFIG = { ...DEFAULT_CONFIG, ...d.config, posChances: { ...DEFAULT_CONFIG.posChances, ...(d.config.posChances || {}) } }; saveLS(); saveConfig(); } } catch (ex) {} }; r.readAsText(f); }; inp.click(); }
         function showAlertMessage(msg, type = 'success') { const ea = document.querySelector('.alert-message'); if (ea) ea.remove(); const ad = document.createElement('div'); ad.className = 'alert-message' + (type === 'warning' ? ' alert-warning' : ''); ad.textContent = msg; const ct = document.querySelector('.container'); if (ct) { const h1 = ct.querySelector('h1'); if (h1) h1.insertAdjacentElement('afterend', ad); else ct.insertBefore(ad, ct.firstChild); setTimeout(() => ad.remove(), 3500); } }
+
+        // ============================================
+        // MAPEAMENTO DE POSIÇÕES COMPATÍVEIS PARA SUBSTITUIÇÃO
+        // ============================================
+        const POSITION_GROUPS = {
+            'GOL': ['GOL'],
+            'DEF': ['ZAG', 'LAT'],
+            'MEI': ['VOL', 'MEI'],
+            'ATA': ['ATA', 'PE']
+        };
+        
+        function getPositionGroup(pos) {
+            for (const [group, positions] of Object.entries(POSITION_GROUPS)) {
+                if (positions.includes(pos)) return group;
+            }
+            return 'MEI';
+        }
+        
+        function arePositionsCompatible(pos1, pos2) {
+            if (pos1 === 'GOL' || pos2 === 'GOL') return false;
+            const group1 = getPositionGroup(pos1);
+            const group2 = getPositionGroup(pos2);
+            return group1 === group2;
+        }
 
         // ============================================
         // DADOS DO JOGO
@@ -353,11 +379,11 @@
             'Serie A': { name: 'Serie A TIM', country: 'Itália', teams: ['Inter Milan','AC Milan','Juventus','Napoli','Roma','Lazio','Atalanta','Fiorentina','Torino','Bologna','Monza','Udinese','Sassuolo','Empoli','Lecce','Genoa','Cagliari','Verona','Salernitana','Frosinone'] },
             'Bundesliga': { name: 'Bundesliga', country: 'Alemanha', teams: ['Bayern München','Borussia Dortmund','RB Leipzig','Bayer Leverkusen','Wolfsburg','Eintracht Frankfurt','Freiburg','Union Berlin','Mainz 05','Borussia Mönchengladbach','Werder Bremen','Augsburg','Hoffenheim','Stuttgart','Bochum','Heidenheim','Darmstadt','Köln','Schalke 04','Hamburger SV'] },
             'Ligue 1': { name: 'Ligue 1', country: 'França', teams: ['PSG','Marseille','Lyon','Monaco','Lille','Rennes','Nice','Lens','Strasbourg','Reims','Montpellier','Toulouse','Nantes','Brest','Lorient','Auxerre','Ajaccio','Troyes','Angers','Clermont'] },
-            'Brasileirão A': { name: 'Brasileirão A', country: 'Brasil', teams: ['Flamengo','Palmeiras','São Paulo','Santos','Corinthians','Grêmio','Internacional','Atlético-MG','Cruzeiro','Fluminense','Vasco','Botafogo','Athletico-PR','Remo','Bahia','Mirassol','Vitória','Coritiba','Bragantino','Chapecoense'] },
-            'Brasileirão B': { name: 'Brasileirão B', country: 'Brasil', teams: ['Villa Nova','São Bernardo','Sport','Novorizontino','Criciúma','Juventude','Operário','Fortaleza','Náutico','Cuiabá','Athletc','Goiás','Athletico-GO','Ceará','Botafogo-SP','CRB','Londrina','Avai','Ponte Preta','América-MG'] },
-            'Liga Portuguesa': { name: 'Liga Portuguesa', country: 'Portugal', teams: ['Benfica','Porto','Sporting','Braga','Vitória Guimarães','Boavista','Famalicão','Rio Ave','Estoril','Portimonense','Gil Vicente','Moreirense','Casa Pia','Estrela Amadora','Farense','Arouca','Vizela','Chaves','Marítimo','Paços Ferreira'] },
-            'Liga Árabe': { name: 'Liga Árabe', country: 'Arábia Saudita', teams: ['Al-Hilal','Al-Nassr','Al-Ittihad','Al-Ahli','Al-Shabab','Al-Fateh','Al-Ettifaq','Al-Taawoun','Al-Fayha','Abha','Al-Raed','Damac','Al-Wehda','Al-Tai','Al-Khaleej','Al-Riyadh','Al-Okhdood','Al-Hazem','Al-Qadisiyah','Al-Arabi'] },
-            'Seleções': { name: 'Seleções', country: 'Mundial', teams: ['México','Holanda','áfrica do sul','Coreia do sul','Tchéquia','Súiça','Canadá','Bósnia','Catar','Brasil','Marrocos','Escócia','Haiti','EUA','Austrália','Paraguai','Turquia','Alemanha','Costa do Marfim','Equador','Curação'] },
+            'Brasileirão A': { name: 'Brasileirão A', country: 'Brasil', teams: ['Flamengo','Palmeiras','São Paulo','Santos','Corinthians','Grêmio','Internacional','Atlético-MG','Cruzeiro','Fluminense','Vasco','Botafogo','Athletico-PR','Fortaleza','Bahia','Ceará','Sport','Coritiba','Goiás','América-MG'] },
+            'Brasileirão B': { name: 'Brasileirão B', country: 'Brasil', teams: ['Flamengo','Palmeiras','São Paulo','Santos','Corinthians','Grêmio','Internacional','Atlético-MG','Cruzeiro','Fluminense','Vasco','Botafogo','Athletico-PR','Fortaleza','Bahia','Ceará','Sport','Coritiba','Goiás','América-MG'] },
+            'Liga Portuguesa': { name: 'Liga Portuguesa', country: 'Portugal', teams: ['Benfica','Porto','Sporting','Braga','Vitória Guimarães','Boavista','Famalicão','Rio Ave','Estoril','Portimonense','Gil Vicente','Moreirense']['Casa Pia']['Estrela Amadora']['Farense']['Arouca']['Vizela']['Chaves']['Marítimo']['Paços Ferreira'] },
+            'Liga Árabe': { name: 'Liga Árabe', country: 'Arábia Saudita', teams: ['Al-Hilal']['Al-Nassr']['Al-Ittihad']['Al-Ahli']['Al-Shabab']['Al-Fateh']['Al-Ettifaq']['Al-Taawoun']['Al-Fayha']['Abha']['Al-Raed']['Damac']['Al-Wehda']['Al-Tai']['Al-Khaleej']['Al-Riyadh']['Al-Okhdood']['Al-Hazem']['Al-Qadisiyah']['Al-Arabi'] },
+            'Seleções': { name: 'Seleção', country: 'Mundial', teams: ['Al-Hilal']['Al-Nassr']['Al-Ittihad']['Al-Ahli']['Al-Shabab']['Al-Fateh']['Al-Ettifaq']['Al-Taawoun']['Al-Fayha']['Abha']['Al-Raed']['Damac']['Al-Wehda']['Al-Tai']['Al-Khaleej']['Al-Riyadh']['Al-Okhdood']['Al-Hazem']['Al-Qadisiyah']['Al-Arabi'] }
         };
 
         function getTD(tn) { if (teamsDataCache[tn]) return JSON.parse(JSON.stringify(teamsDataCache[tn])); const d = genTD(tn); teamsDataCache[tn] = JSON.parse(JSON.stringify(d)); saveLS(); return d; }
@@ -391,7 +417,23 @@
         // ============================================
         function getFP(f) { const p = []; switch(f) { case '4-4-2': p.push({x:50,y:85,position:'GOL'}); p.push({x:20,y:65},{x:40,y:65},{x:60,y:65},{x:80,y:65}); p.push({x:20,y:45},{x:40,y:45},{x:60,y:45},{x:80,y:45}); p.push({x:35,y:25},{x:65,y:25}); break; case '4-3-3': p.push({x:50,y:85,position:'GOL'}); p.push({x:20,y:65},{x:40,y:65},{x:60,y:65},{x:80,y:65}); p.push({x:30,y:45},{x:50,y:45},{x:70,y:45}); p.push({x:20,y:25},{x:50,y:25},{x:80,y:25}); break; case '3-5-2': p.push({x:50,y:85,position:'GOL'}); p.push({x:30,y:65},{x:50,y:65},{x:70,y:65}); p.push({x:10,y:45},{x:30,y:45},{x:50,y:45},{x:70,y:45},{x:90,y:45}); p.push({x:35,y:25},{x:65,y:25}); break; case '4-2-3-1': p.push({x:50,y:85,position:'GOL'}); p.push({x:20,y:65},{x:40,y:65},{x:60,y:65},{x:80,y:65}); p.push({x:35,y:50},{x:65,y:50}); p.push({x:15,y:35},{x:45,y:35},{x:75,y:35}); p.push({x:50,y:20}); break; case '3-4-3': p.push({x:50,y:85,position:'GOL'}); p.push({x:30,y:65},{x:50,y:65},{x:70,y:65}); p.push({x:15,y:45},{x:40,y:45},{x:60,y:45},{x:85,y:45}); p.push({x:20,y:25},{x:50,y:25},{x:80,y:25}); break; default: p.push({x:50,y:85,position:'GOL'}); for(let i=0;i<10;i++) p.push({x:20+(i*7),y:50}); } return p; }
         function renderF(tt, starters, all, st) { const fm = tt === 'team1' ? gs.cf1 : gs.cf2; const pos = getFP(fm); let h = ''; const fp = starters.slice(0, 11); pos.forEach((p, i) => { const pl = fp[i]; if (pl) { const pi = all.indexOf(pl); h += `<div class="player-dot ${st.p1===pi?'selected-for-sub':''}" style="left:${p.x}%;top:${p.y}%;" onclick="handlePC('${tt}',${pi},'starter')"><span class="player-name">${pl.name.split(' ')[0]}</span>${pl.position}<span class="player-rating">${pl.rating}</span></div>`; } }); return h; }
-        function renderSL(tt, pl, pt, all, st) { let h = ''; pl.forEach(p => { const oi = all.indexOf(p); h += `<div class="squad-player ${pt} ${st.p1===oi?'selected-for-sub':''}" onclick="handlePC('${tt}',${oi},'${pt}')"><span>${p.number} - ${p.name} (${p.position})</span><span class="player-rating-display">${p.rating}</span></div>`; }); return h; }
+        
+        // Renderizar lista agrupada por posição
+        function renderSL(tt, pl, pt, all, st) {
+            let h = '';
+            const groups = { 'GOL': [], 'DEF': [], 'MEI': [], 'ATA': [] };
+            pl.forEach(p => { const g = getPositionGroup(p.position); if (groups[g]) groups[g].push(p); });
+            const groupLabels = { 'GOL': '🥅 Goleiros', 'DEF': '🛡️ Defensores', 'MEI': '🎩 Meio-campistas', 'ATA': '⚽ Atacantes' };
+            for (const [group, players] of Object.entries(groups)) {
+                if (players.length > 0) {
+                    h += `<div class="position-group"><h5>${groupLabels[group]}</h5>`;
+                    players.forEach(p => { const oi = all.indexOf(p); h += `<div class="squad-player ${pt} ${st.p1===oi?'selected-for-sub':''}" onclick="handlePC('${tt}',${oi},'${pt}')"><span>${p.number} - ${p.name} (${p.position})</span><span class="player-rating-display">${p.rating}</span></div>`; });
+                    h += '</div>';
+                }
+            }
+            return h;
+        }
+        
         function changeF(tt, f) { if (tt === 'team1') gs.cf1 = f; else gs.cf2 = f; renderTD(tt, tt === 'team1' ? gs.st1 : gs.st2); }
         function confirmTS(tt) { if (tt === 'team1') { gs.step = 2; renderSS(); } else { gs.step = 3; renderSS(); } }
         function renderSO() { const c = document.getElementById('simulatorContent'); c.innerHTML = `<h3>Simular:</h3><div style="display:flex;justify-content:center;gap:40px;margin:20px 0;"><div><h4>${gs.st1}</h4><div class="team-overall-display" style="font-size:2em;">${gs.t1o}</div><p>${gs.t1d.coach}</p></div><div style="font-size:3em;">VS</div><div><h4>${gs.st2}</h4><div class="team-overall-display" style="font-size:2em;">${gs.t2o}</div><p>${gs.t2d.coach}</p></div></div><div class="simulation-options"><div class="sim-card" onclick="simMatch('quick')"><h3>⚡ Rápida</h3></div><div class="sim-card" onclick="simMatch('minute')"><h3>⏱️ Minuto</h3></div><div class="sim-card" onclick="simMatch('visual')"><h3>🔵 11x11</h3></div></div>`; }
@@ -401,26 +443,18 @@
         function dispMR(m) { const c = document.getElementById('simulationContent'); const tc1 = tactics[m.t1d.tactic].class, tc2 = tactics[m.t2d.tactic].class; c.innerHTML = `<div class="match-result"><h2>Resultado Final</h2><div style="display:flex;justify-content:center;gap:20px;margin:15px 0;"><div><h4>${m.team1}</h4><div class="team-overall-display" style="font-size:1.5em;">${m.t1o}</div></div><div style="font-size:2.5em;color:#6a5acd;">${m.g1} - ${m.g2}</div><div><h4>${m.team2}</h4><div class="team-overall-display" style="font-size:1.5em;">${m.t2o}</div></div></div><div class="stats-grid"><div class="stat-item"><h4>Posse</h4><p>${m.possession}% - ${100-m.possession}%</p></div><div class="stat-item"><h4>Chutes</h4><p>${m.sh1} - ${m.sh2}</p></div><div class="stat-item"><h4>Amarelos</h4><p>${m.yc1} - ${m.yc2}</p></div><div class="stat-item"><h4>Vermelhos</h4><p>${m.rc1} - ${m.rc2}</p></div></div></div>`; }
 
         // ============================================
-        // SIMULAÇÃO MINUTO A MINUTO (APENAS TITULARES + SUBS NÃO REPETIDOS)
+        // SIMULAÇÃO MINUTO A MINUTO (SUBSTITUIÇÃO POR POSIÇÃO)
         // ============================================
         function simMM(m) {
             const c = document.getElementById('simulationContent');
             const t1p = JSON.parse(JSON.stringify(gs.t1l)), t2p = JSON.parse(JSON.stringify(gs.t2l));
-            // Resetar estatísticas e marcar todos como não substituídos
             t1p.forEach(p => { p.g = 0; p.yc = 0; p.rc = 0; p.subbedOut = false; p.subbedIn = false; });
             t2p.forEach(p => { p.g = 0; p.yc = 0; p.rc = 0; p.subbedOut = false; p.subbedIn = false; });
             
-            // Cópia viva do elenco (apenas titulares inicialmente)
-            let liveT1 = JSON.parse(JSON.stringify(t1p));
-            let liveT2 = JSON.parse(JSON.stringify(t2p));
-            
-            // Conjunto de índices dos jogadores que estão EM CAMPO (titulares ativos)
+            let liveT1 = JSON.parse(JSON.stringify(t1p)), liveT2 = JSON.parse(JSON.stringify(t2p));
             let activeT1 = new Set([0,1,2,3,4,5,6,7,8,9,10]);
             let activeT2 = new Set([0,1,2,3,4,5,6,7,8,9,10]);
-            
-            // Conjunto de índices dos jogadores que JÁ FORAM SUBSTITUÍDOS (saíram)
-            let subbedOutT1 = new Set();
-            let subbedOutT2 = new Set();
+            let subbedOutT1 = new Set(), subbedOutT2 = new Set();
             
             let cg1=0, cg2=0, sh1=0, sh2=0, yc1=0, yc2=0, rc1=0, rc2=0, inj1=0, inj2=0, sub1=0, sub2=0, pos1=50;
             const ps1={}, ps2={}; 
@@ -432,7 +466,6 @@
             const od = m.t1o - m.t2o;
             let minute = 0;
             
-            // Função auxiliar: retorna jogador aleatório DENTRE OS ATIVOS (em campo)
             function getRandomActivePlayer(teamPlayers, activeSet) {
                 const activeArr = Array.from(activeSet);
                 if (activeArr.length === 0) return null;
@@ -445,159 +478,116 @@
                 if (minute <= 90) {
                     document.getElementById('md').textContent = minute + "'";
                     
-                    // Posse de bola
                     if (Math.random() < 0.3) { pos1 = Math.max(30, Math.min(70, pos1 + (Math.random()*6-3))); document.getElementById('lpos').textContent = Math.round(pos1) + '%-' + Math.round(100-pos1) + '%'; }
                     
-                    // Chutes - APENAS JOGADORES ATIVOS
                     if (Math.random() < CONFIG.shotChance / 100) {
-                        if (Math.random() < pos1/100) { 
-                            sh1++; 
-                            const shooter = getRandomActivePlayer(liveT1, activeT1);
-                            if (shooter) addEv('ml', 'event-info', minute + "' 🥅 Chute de " + shooter.name + " (" + m.team1 + ")"); 
-                        } else { 
-                            sh2++; 
-                            const shooter = getRandomActivePlayer(liveT2, activeT2);
-                            if (shooter) addEv('ml', 'event-info', minute + "' 🥅 Chute de " + shooter.name + " (" + m.team2 + ")"); 
-                        }
+                        if (Math.random() < pos1/100) { sh1++; const shooter = getRandomActivePlayer(liveT1, activeT1); if (shooter) addEv('ml', 'event-info', minute + "' 🥅 Chute de " + shooter.name + " (" + m.team1 + ")"); }
+                        else { sh2++; const shooter = getRandomActivePlayer(liveT2, activeT2); if (shooter) addEv('ml', 'event-info', minute + "' 🥅 Chute de " + shooter.name + " (" + m.team2 + ")"); }
                         document.getElementById('lsh').textContent = sh1 + '-' + sh2;
                     }
                     
-                    // Gols - APENAS JOGADORES ATIVOS
                     if (Math.random() < CONFIG.goalChance / 100 && cg1 + cg2 < CONFIG.maxGoals) {
                         const t1c = 0.5 + (od / 200);
-                        if (Math.random() < t1c) {
-                            cg1++;
-                            const sc = getScorerFromActive(liveT1, activeT1, CONFIG.posChances);
-                            if (sc) { sc.g = (sc.g||0) + 1; ps1[sc.name].g = sc.g; }
-                            addEv('ml', 'event-goal-home', minute + "' ⚽ GOL! " + (sc?sc.name:'Jogador') + " (" + m.team1 + ") " + cg1 + "-" + cg2);
-                        } else {
-                            cg2++;
-                            const sc = getScorerFromActive(liveT2, activeT2, CONFIG.posChances);
-                            if (sc) { sc.g = (sc.g||0) + 1; ps2[sc.name].g = sc.g; }
-                            addEv('ml', 'event-goal-away', minute + "' ⚽ GOL! " + (sc?sc.name:'Jogador') + " (" + m.team2 + ") " + cg1 + "-" + cg2);
-                        }
+                        if (Math.random() < t1c) { cg1++; const sc = getScorerFromActive(liveT1, activeT1, CONFIG.posChances); if (sc) { sc.g = (sc.g||0) + 1; ps1[sc.name].g = sc.g; } addEv('ml', 'event-goal-home', minute + "' ⚽ GOL! " + (sc?sc.name:'Jogador') + " (" + m.team1 + ") " + cg1 + "-" + cg2); }
+                        else { cg2++; const sc = getScorerFromActive(liveT2, activeT2, CONFIG.posChances); if (sc) { sc.g = (sc.g||0) + 1; ps2[sc.name].g = sc.g; } addEv('ml', 'event-goal-away', minute + "' ⚽ GOL! " + (sc?sc.name:'Jogador') + " (" + m.team2 + ") " + cg1 + "-" + cg2); }
                         document.getElementById('ls').textContent = cg1 + '-' + cg2;
                         updPS('ps1', liveT1, ps1, activeT1, subbedOutT1); updPS('ps2', liveT2, ps2, activeT2, subbedOutT2);
                     }
                     
-                    // Cartão amarelo - APENAS JOGADORES ATIVOS
                     if (Math.random() < CONFIG.yellowChance / 100) {
-                        if (Math.random() < 0.5) { 
-                            yc1++; 
-                            const p = getRandomActivePlayer(liveT1, activeT1); 
-                            if(p){ p.yc=(p.yc||0)+1; ps1[p.name].cards=p.yc; }
-                            addEv('ml','event-yellow', minute + "' 🟨 Amarelo: " + (p?p.name:'Jogador') + " (" + m.team1 + ")"); 
-                        } else { 
-                            yc2++; 
-                            const p = getRandomActivePlayer(liveT2, activeT2); 
-                            if(p){ p.yc=(p.yc||0)+1; ps2[p.name].cards=p.yc; }
-                            addEv('ml','event-yellow', minute + "' 🟨 Amarelo: " + (p?p.name:'Jogador') + " (" + m.team2 + ")"); 
-                        }
+                        if (Math.random() < 0.5) { yc1++; const p = getRandomActivePlayer(liveT1, activeT1); if(p){ p.yc=(p.yc||0)+1; ps1[p.name].cards=p.yc; } addEv('ml','event-yellow', minute + "' 🟨 Amarelo: " + (p?p.name:'Jogador') + " (" + m.team1 + ")"); }
+                        else { yc2++; const p = getRandomActivePlayer(liveT2, activeT2); if(p){ p.yc=(p.yc||0)+1; ps2[p.name].cards=p.yc; } addEv('ml','event-yellow', minute + "' 🟨 Amarelo: " + (p?p.name:'Jogador') + " (" + m.team2 + ")"); }
                         document.getElementById('lyc').textContent = yc1 + '-' + yc2;
                         updPS('ps1', liveT1, ps1, activeT1, subbedOutT1); updPS('ps2', liveT2, ps2, activeT2, subbedOutT2);
                     }
                     
-                    // Cartão vermelho - APENAS JOGADORES ATIVOS
                     if (Math.random() < CONFIG.redChance / 100) {
-                        if (Math.random() < 0.5) { 
-                            rc1++; 
-                            const p = getRandomActivePlayer(liveT1, activeT1);
-                            if(p){ p.rc=(p.rc||0)+1; ps1[p.name].rc=p.rc; }
-                            addEv('ml','event-red', minute + "' 🟥 VERMELHO: " + (p?p.name:'Jogador') + " (" + m.team1 + ")"); 
-                        } else { 
-                            rc2++; 
-                            const p = getRandomActivePlayer(liveT2, activeT2);
-                            if(p){ p.rc=(p.rc||0)+1; ps2[p.name].rc=p.rc; }
-                            addEv('ml','event-red', minute + "' 🟥 VERMELHO: " + (p?p.name:'Jogador') + " (" + m.team2 + ")"); 
-                        }
+                        if (Math.random() < 0.5) { rc1++; const p = getRandomActivePlayer(liveT1, activeT1); if(p){ p.rc=(p.rc||0)+1; ps1[p.name].rc=p.rc; } addEv('ml','event-red', minute + "' 🟥 VERMELHO: " + (p?p.name:'Jogador') + " (" + m.team1 + ")"); }
+                        else { rc2++; const p = getRandomActivePlayer(liveT2, activeT2); if(p){ p.rc=(p.rc||0)+1; ps2[p.name].rc=p.rc; } addEv('ml','event-red', minute + "' 🟥 VERMELHO: " + (p?p.name:'Jogador') + " (" + m.team2 + ")"); }
                         document.getElementById('lrc').textContent = rc1 + '-' + rc2;
                         updPS('ps1', liveT1, ps1, activeT1, subbedOutT1); updPS('ps2', liveT2, ps2, activeT2, subbedOutT2);
                     }
                     
-                    // Lesão - APENAS JOGADORES ATIVOS
                     if (Math.random() < CONFIG.injuryChance / 100) {
                         const it = ['Torção no tornozelo','Distensão muscular','Pancada na coxa','Entorse no joelho','Fratura no pé','Concussão'];
-                        if (Math.random() < 0.5) { 
-                            inj1++; 
-                            const p = getRandomActivePlayer(liveT1, activeT1); 
-                            if(p) p.injured = true;
-                            addEv('ml','event-injury', minute + "' 🤕 Lesão: " + (p?p.name:'Jogador') + " (" + m.team1 + ") - " + it[Math.floor(Math.random()*it.length)]); 
-                        } else { 
-                            inj2++; 
-                            const p = getRandomActivePlayer(liveT2, activeT2); 
-                            if(p) p.injured = true;
-                            addEv('ml','event-injury', minute + "' 🤕 Lesão: " + (p?p.name:'Jogador') + " (" + m.team2 + ") - " + it[Math.floor(Math.random()*it.length)]); 
-                        }
+                        if (Math.random() < 0.5) { inj1++; const p = getRandomActivePlayer(liveT1, activeT1); if(p) p.injured = true; addEv('ml','event-injury', minute + "' 🤕 Lesão: " + (p?p.name:'Jogador') + " (" + m.team1 + ") - " + it[Math.floor(Math.random()*it.length)]); }
+                        else { inj2++; const p = getRandomActivePlayer(liveT2, activeT2); if(p) p.injured = true; addEv('ml','event-injury', minute + "' 🤕 Lesão: " + (p?p.name:'Jogador') + " (" + m.team2 + ") - " + it[Math.floor(Math.random()*it.length)]); }
                         document.getElementById('linj').textContent = inj1 + '-' + inj2;
                     }
                     
-                    // Substituições - APENAS TITULARES ATIVOS SAEM, RESERVAS NÃO SUBSTITUÍDOS ENTRAM
+                    // SUBSTITUIÇÃO POR POSIÇÃO - Goleiro NUNCA é substituído
                     if (minute >= CONFIG.subStart && minute <= CONFIG.subEnd && Math.random() < CONFIG.subChance / 100) {
                         // Time 1
                         if (sub1 < 5 && activeT1.size > 0) {
-                            // Jogador que vai SAIR (titular ativo que ainda não saiu)
-                            const availableToSubOut = Array.from(activeT1).filter(idx => !subbedOutT1.has(idx));
-                            if (availableToSubOut.length > 0) {
-                                // Jogador que vai ENTRAR (reserva com índice >= 11 que ainda não entrou)
-                                const availableToSubIn = [];
+                            const availableOut = Array.from(activeT1).filter(idx => {
+                                if (subbedOutT1.has(idx)) return false;
+                                return liveT1[idx].position !== 'GOL';
+                            });
+                            if (availableOut.length > 0) {
+                                const outIdx = availableOut[Math.floor(Math.random() * availableOut.length)];
+                                const outPlayer = liveT1[outIdx];
+                                const outGroup = getPositionGroup(outPlayer.position);
+                                
+                                const availableIn = [];
                                 for (let i = 11; i < liveT1.length; i++) {
-                                    if (!liveT1[i].subbedIn && !activeT1.has(i)) {
-                                        availableToSubIn.push(i);
+                                    if (!liveT1[i].subbedIn && !activeT1.has(i) && arePositionsCompatible(outPlayer.position, liveT1[i].position)) {
+                                        availableIn.push(i);
                                     }
                                 }
-                                if (availableToSubIn.length > 0) {
+                                if (availableIn.length > 0) {
                                     sub1++;
-                                    const outIdx = availableToSubOut[Math.floor(Math.random() * availableToSubOut.length)];
-                                    const inIdx = availableToSubIn[Math.floor(Math.random() * availableToSubIn.length)];
-                                    const op = liveT1[outIdx];
-                                    const ip = liveT1[inIdx];
+                                    const inIdx = availableIn[Math.floor(Math.random() * availableIn.length)];
+                                    const inPlayer = liveT1[inIdx];
                                     
-                                    // Marcar saída e entrada
-                                    op.subbedOut = true;
-                                    ip.subbedIn = true;
+                                    outPlayer.subbedOut = true;
+                                    inPlayer.subbedIn = true;
                                     activeT1.delete(outIdx);
                                     activeT1.add(inIdx);
                                     subbedOutT1.add(outIdx);
                                     
-                                    ps1[op.name].subOut = minute;
-                                    ps1[op.name].active = false;
-                                    ps1[ip.name].subIn = minute;
-                                    ps1[ip.name].active = true;
+                                    ps1[outPlayer.name].subOut = minute;
+                                    ps1[outPlayer.name].active = false;
+                                    ps1[inPlayer.name].subIn = minute;
+                                    ps1[inPlayer.name].active = true;
                                     
-                                    addEv('ml','event-sub', minute + "' 🔄 Sub " + m.team1 + ": " + op.name + " ⬅️ ➡️ " + ip.name);
+                                    addEv('ml','event-sub', minute + "' 🔄 Sub " + m.team1 + ": " + outPlayer.name + " (" + outPlayer.position + ") ⬅️ ➡️ " + inPlayer.name + " (" + inPlayer.position + ")");
                                 }
                             }
                         }
                         
                         // Time 2
                         if (sub2 < 5 && activeT2.size > 0) {
-                            const availableToSubOut = Array.from(activeT2).filter(idx => !subbedOutT2.has(idx));
-                            if (availableToSubOut.length > 0) {
-                                const availableToSubIn = [];
+                            const availableOut = Array.from(activeT2).filter(idx => {
+                                if (subbedOutT2.has(idx)) return false;
+                                return liveT2[idx].position !== 'GOL';
+                            });
+                            if (availableOut.length > 0) {
+                                const outIdx = availableOut[Math.floor(Math.random() * availableOut.length)];
+                                const outPlayer = liveT2[outIdx];
+                                
+                                const availableIn = [];
                                 for (let i = 11; i < liveT2.length; i++) {
-                                    if (!liveT2[i].subbedIn && !activeT2.has(i)) {
-                                        availableToSubIn.push(i);
+                                    if (!liveT2[i].subbedIn && !activeT2.has(i) && arePositionsCompatible(outPlayer.position, liveT2[i].position)) {
+                                        availableIn.push(i);
                                     }
                                 }
-                                if (availableToSubIn.length > 0) {
+                                if (availableIn.length > 0) {
                                     sub2++;
-                                    const outIdx = availableToSubOut[Math.floor(Math.random() * availableToSubOut.length)];
-                                    const inIdx = availableToSubIn[Math.floor(Math.random() * availableToSubIn.length)];
-                                    const op = liveT2[outIdx];
-                                    const ip = liveT2[inIdx];
+                                    const inIdx = availableIn[Math.floor(Math.random() * availableIn.length)];
+                                    const inPlayer = liveT2[inIdx];
                                     
-                                    op.subbedOut = true;
-                                    ip.subbedIn = true;
+                                    outPlayer.subbedOut = true;
+                                    inPlayer.subbedIn = true;
                                     activeT2.delete(outIdx);
                                     activeT2.add(inIdx);
                                     subbedOutT2.add(outIdx);
                                     
-                                    ps2[op.name].subOut = minute;
-                                    ps2[op.name].active = false;
-                                    ps2[ip.name].subIn = minute;
-                                    ps2[ip.name].active = true;
+                                    ps2[outPlayer.name].subOut = minute;
+                                    ps2[outPlayer.name].active = false;
+                                    ps2[inPlayer.name].subIn = minute;
+                                    ps2[inPlayer.name].active = true;
                                     
-                                    addEv('ml','event-sub', minute + "' 🔄 Sub " + m.team2 + ": " + op.name + " ⬅️ ➡️ " + ip.name);
+                                    addEv('ml','event-sub', minute + "' 🔄 Sub " + m.team2 + ": " + outPlayer.name + " (" + outPlayer.position + ") ⬅️ ➡️ " + inPlayer.name + " (" + inPlayer.position + ")");
                                 }
                             }
                         }
@@ -617,16 +607,11 @@
             }, CONFIG.speed);
         }
         
-        // Função para escolher artilheiro APENAS entre jogadores ativos
         function getScorerFromActive(players, activeSet, posChances) {
             const activeArr = Array.from(activeSet);
             if (activeArr.length === 0) return null;
             const weighted = [];
-            activeArr.forEach(idx => {
-                const p = players[idx];
-                const chance = posChances[p.position] || 5;
-                for (let i = 0; i < chance; i++) weighted.push(p);
-            });
+            activeArr.forEach(idx => { const p = players[idx]; const chance = posChances[p.position] || 5; for (let i = 0; i < chance; i++) weighted.push(p); });
             if (weighted.length === 0) return players[activeArr[0]];
             return weighted[Math.floor(Math.random() * weighted.length)];
         }
@@ -639,7 +624,7 @@
                 const isActive = activeSet.has(idx);
                 const isSubbedOut = subbedOutSet.has(idx);
                 const className = isSubbedOut ? 'substituted-out' : '';
-                return `<div class="player-stat-row ${className}"><span>${p.name}${isSubbedOut?' ⬅️':''}${!isActive && !isSubbedOut && idx < 11 ? '' : ''}</span><span>${(stats[p.name]?.g||0)>0?'⚽'+(stats[p.name]?.g||0):''} ${(stats[p.name]?.cards||0)>0?'🟨'+(stats[p.name]?.cards||0):''} ${(stats[p.name]?.rc||0)>0?'🟥':''} ${p.injured?'🤕':''}</span></div>`;
+                return `<div class="player-stat-row ${className}"><span>${p.name}${isSubbedOut?' ⬅️':''}</span><span>${(stats[p.name]?.g||0)>0?'⚽'+(stats[p.name]?.g||0):''} ${(stats[p.name]?.cards||0)>0?'🟨'+(stats[p.name]?.cards||0):''} ${(stats[p.name]?.rc||0)>0?'🟥':''} ${p.injured?'🤕':''}</span></div>`;
             }).join('') || '<p style="color:#b0b0b0;">-</p>'; 
         }
         function dispMRfromData(d) { const m2 = typeof d === 'string' ? JSON.parse(d) : d; dispMR(m2); }
@@ -647,31 +632,7 @@
         // ============================================
         // SIMULAÇÃO VISUAL 11x11
         // ============================================
-        function simV11(m) {
-            const c = document.getElementById('simulationContent');
-            const hp = gs.t1l.slice(0,11), ap = gs.t2l.slice(0,11);
-            const ps1={}, ps2={}; hp.forEach(p=>{ps1[p.name]={g:0,yc:0};}); ap.forEach(p=>{ps2[p.name]={g:0,yc:0};});
-            let poss='home',pwb=0,cg1=0,cg2=0,sh1=0,sh2=0,yc1=0,yc2=0,minute=0,second=0,paused=false,finished=false,interval,speed=1;
-            const hPos=[{x:45,y:85},{x:18,y:65},{x:35,y:62},{x:52,y:62},{x:68,y:65},{x:22,y:42},{x:40,y:38},{x:55,y:38},{x:72,y:42},{x:35,y:22},{x:60,y:22}];
-            const aPos=[{x:45,y:8},{x:18,y:28},{x:35,y:30},{x:52,y:30},{x:68,y:28},{x:22,y:50},{x:40,y:54},{x:55,y:54},{x:72,y:50},{x:35,y:68},{x:60,y:68}];
-            c.innerHTML = `<div class="match-result"><h2>🔵 11x11</h2><div class="visual-scoreboard"><span>${m.team1}</span><div class="chronometer" id="chrono">00:00</div><span>${m.team2}</span></div><div style="text-align:center;font-size:1.5em;color:#ffd700;" id="vScore">0-0</div><div class="pitch-container" id="pitch"><div class="pitch-center-line"></div><div class="pitch-center-circle"></div><div class="pitch-center-dot"></div><div class="pitch-goal pitch-goal-left"></div><div class="pitch-goal pitch-goal-right"></div><div id="playersC"></div><div class="visual-ball" id="ball" style="left:47%;top:47%;"></div></div><div style="text-align:center;margin:8px 0;"><button class="btn" onclick="toggleP()" id="btnP">⏸️</button><button class="btn" onclick="changeSp()" id="btnSp">1x</button></div><div class="minute-simulation-container"><div class="minute-log-panel" id="vLog" style="max-height:180px;"><h4>Acontecimentos</h4><div id="vEvents"></div></div><div class="minute-stats-panel"><div class="live-stats"><div class="live-stat-item"><h4>Chutes</h4><p id="vSh">0-0</p></div><div class="live-stat-item"><h4>Amarelos</h4><p id="vYc">0-0</p></div></div><h4>${m.team1}</h4><div id="vPs1" style="max-height:60px;overflow-y:auto;font-size:10px;"></div><h4>${m.team2}</h4><div id="vPs2" style="max-height:60px;overflow-y:auto;font-size:10px;"></div></div></div></div>`;
-            const pc = document.getElementById('playersC');
-            hp.forEach((p,i)=>{const el=document.createElement('div');el.className='visual-player team-home'+(i===0?' goalkeeper':'');el.id='hp'+i;el.style.left=hPos[i].x+'%';el.style.top=hPos[i].y+'%';el.textContent=i===0?'GK':p.name.substring(0,2);el.title=p.name;pc.appendChild(el);});
-            ap.forEach((p,i)=>{const el=document.createElement('div');el.className='visual-player team-away'+(i===0?' goalkeeper':'');el.id='ap'+i;el.style.left=aPos[i].x+'%';el.style.top=aPos[i].y+'%';el.textContent=i===0?'GK':p.name.substring(0,2);el.title=p.name;pc.appendChild(el);});
-            updateBP();
-            startM();
-            function startM(){interval=setInterval(()=>{if(paused||finished)return;second++;if(second>=60){second=0;minute++;if(minute===45){addVE('event-info','⏸️ INTERVALO');setTimeout(()=>{minute=45;second=0;addVE('event-info','▶️ 2º Tempo');resetPos();},2000/speed);}if(minute>=90){finished=true;clearInterval(interval);addVE('event-info','⏹️ FIM');m.g1=cg1;m.g2=cg2;m.sh1=sh1;m.sh2=sh2;m.yc1=yc1;m.yc2=yc2;const le=document.getElementById('vLog');if(le){const bd=document.createElement('div');bd.style.textAlign='center';bd.style.marginTop='8px';bd.innerHTML='<button class="btn" onclick="dispMRfromV('+JSON.stringify(m).replace(/"/g,'&quot;')+')">📊 Resultado</button>';le.appendChild(bd);}return;}}document.getElementById('chrono').textContent=String(minute).padStart(2,'0')+':'+String(second).padStart(2,'0');movePl();moveBall();if(Math.random()<0.008*speed){if(Math.random()<0.5){sh1++;const s=hp[Math.floor(Math.random()*11)];addVE('event-info',fmtT()+' 🥅 Chute de '+s.name+' ('+m.team1+')');}else{sh2++;const s=ap[Math.floor(Math.random()*11)];addVE('event-info',fmtT()+' 🥅 Chute de '+s.name+' ('+m.team2+')');}document.getElementById('vSh').textContent=sh1+'-'+sh2;}if(Math.random()<0.003*speed&&cg1+cg2<4){if(Math.random()<0.5){cg1++;const s=hp[Math.floor(Math.random()*11)];ps1[s.name].g++;addVE('event-goal-home',fmtT()+' ⚽ GOL! '+s.name+' ('+m.team1+') '+cg1+'-'+cg2);}else{cg2++;const s=ap[Math.floor(Math.random()*11)];ps2[s.name].g++;addVE('event-goal-away',fmtT()+' ⚽ GOL! '+s.name+' ('+m.team2+') '+cg1+'-'+cg2);}document.getElementById('vScore').textContent=cg1+'-'+cg2;updPSV();resetPos();}if(Math.random()<0.001*speed){if(Math.random()<0.5){yc1++;const p=hp[Math.floor(Math.random()*11)];ps1[p.name].yc++;addVE('event-yellow',fmtT()+' 🟨 '+p.name+' ('+m.team1+')');}else{yc2++;const p=ap[Math.floor(Math.random()*11)];ps2[p.name].yc++;addVE('event-yellow',fmtT()+' 🟨 '+p.name+' ('+m.team2+')');}document.getElementById('vYc').textContent=yc1+'-'+yc2;updPSV();}},120/speed);}
-            function movePl(){document.querySelectorAll('.visual-player').forEach(el=>{if(el.classList.contains('goalkeeper'))return;el.style.left=Math.max(2,Math.min(88,parseFloat(el.style.left)+(Math.random()*3-1.5)))+'%';el.style.top=Math.max(5,Math.min(85,parseFloat(el.style.top)+(Math.random()*3-1.5)))+'%';});}
-            function moveBall(){const ball=document.getElementById('ball');if(!ball)return;const pe=document.getElementById((poss==='home'?'hp':'ap')+pwb);if(pe){ball.style.left=(parseFloat(pe.style.left)+1)+'%';ball.style.top=(parseFloat(pe.style.top)+1)+'%';}if(Math.random()<0.03){poss=poss==='home'?'away':'home';pwb=Math.floor(Math.random()*11);updateBP();}}
-            function updateBP(){document.querySelectorAll('.visual-player').forEach(e=>e.classList.remove('with-ball'));const pe=document.getElementById((poss==='home'?'hp':'ap')+pwb);if(pe)pe.classList.add('with-ball');}
-            function addVE(cls,msg){const el=document.getElementById('vEvents');if(!el)return;const d=document.createElement('div');d.className='event-item '+cls;d.textContent=msg;el.appendChild(d);document.getElementById('vLog').scrollTop=document.getElementById('vLog').scrollHeight;}
-            function updPSV(){const c1=document.getElementById('vPs1'),c2=document.getElementById('vPs2');if(c1)c1.innerHTML=hp.map(p=>`<div class="player-stat-row"><span>${p.name}</span><span>${ps1[p.name].g>0?'⚽'+ps1[p.name].g:''}${ps1[p.name].yc>0?' 🟨':''}</span></div>`).join('');if(c2)c2.innerHTML=ap.map(p=>`<div class="player-stat-row"><span>${p.name}</span><span>${ps2[p.name].g>0?'⚽'+ps2[p.name].g:''}${ps2[p.name].yc>0?' 🟨':''}</span></div>`).join('');}
-            function resetPos(){hp.forEach((p,i)=>{const el=document.getElementById('hp'+i);if(el){el.style.left=hPos[i].x+'%';el.style.top=hPos[i].y+'%'}});ap.forEach((p,i)=>{const el=document.getElementById('ap'+i);if(el){el.style.left=aPos[i].x+'%';el.style.top=aPos[i].y+'%'}});document.getElementById('ball').style.left='47%';document.getElementById('ball').style.top='47%';}
-            function fmtT(){return String(minute).padStart(2,'0')+':'+String(second).padStart(2,'0');}
-            window.toggleP=function(){paused=!paused;document.getElementById('btnP').textContent=paused?'▶️':'⏸️';};
-            window.changeSp=function(){if(speed===1)speed=2;else if(speed===2)speed=4;else speed=1;document.getElementById('btnSp').textContent=speed+'x';clearInterval(interval);startM();};
-            window.dispMRfromV=function(d){const m2=typeof d==='string'?JSON.parse(d):d;dispMR(m2);};
-        }
+        function simV11(m) { const c = document.getElementById('simulationContent'); const hp = gs.t1l.slice(0,11), ap = gs.t2l.slice(0,11); const ps1={}, ps2={}; hp.forEach(p=>{ps1[p.name]={g:0,yc:0};}); ap.forEach(p=>{ps2[p.name]={g:0,yc:0};}); let poss='home',pwb=0,cg1=0,cg2=0,sh1=0,sh2=0,yc1=0,yc2=0,minute=0,second=0,paused=false,finished=false,interval,speed=1; const hPos=[{x:45,y:85},{x:18,y:65},{x:35,y:62},{x:52,y:62},{x:68,y:65},{x:22,y:42},{x:40,y:38},{x:55,y:38},{x:72,y:42},{x:35,y:22},{x:60,y:22}]; const aPos=[{x:45,y:8},{x:18,y:28},{x:35,y:30},{x:52,y:30},{x:68,y:28},{x:22,y:50},{x:40,y:54},{x:55,y:54},{x:72,y:50},{x:35,y:68},{x:60,y:68}]; c.innerHTML = `<div class="match-result"><h2>🔵 11x11</h2><div class="visual-scoreboard"><span>${m.team1}</span><div class="chronometer" id="chrono">00:00</div><span>${m.team2}</span></div><div style="text-align:center;font-size:1.5em;color:#ffd700;" id="vScore">0-0</div><div class="pitch-container" id="pitch"><div class="pitch-center-line"></div><div class="pitch-center-circle"></div><div class="pitch-center-dot"></div><div class="pitch-goal pitch-goal-left"></div><div class="pitch-goal pitch-goal-right"></div><div id="playersC"></div><div class="visual-ball" id="ball" style="left:47%;top:47%;"></div></div><div style="text-align:center;margin:8px 0;"><button class="btn" onclick="toggleP()" id="btnP">⏸️</button><button class="btn" onclick="changeSp()" id="btnSp">1x</button></div><div class="minute-simulation-container"><div class="minute-log-panel" id="vLog" style="max-height:180px;"><h4>Acontecimentos</h4><div id="vEvents"></div></div><div class="minute-stats-panel"><div class="live-stats"><div class="live-stat-item"><h4>Chutes</h4><p id="vSh">0-0</p></div><div class="live-stat-item"><h4>Amarelos</h4><p id="vYc">0-0</p></div></div><h4>${m.team1}</h4><div id="vPs1" style="max-height:60px;overflow-y:auto;font-size:10px;"></div><h4>${m.team2}</h4><div id="vPs2" style="max-height:60px;overflow-y:auto;font-size:10px;"></div></div></div></div>`; const pc = document.getElementById('playersC'); hp.forEach((p,i)=>{const el=document.createElement('div');el.className='visual-player team-home'+(i===0?' goalkeeper':'');el.id='hp'+i;el.style.left=hPos[i].x+'%';el.style.top=hPos[i].y+'%';el.textContent=i===0?'GK':p.name.substring(0,2);el.title=p.name;pc.appendChild(el);}); ap.forEach((p,i)=>{const el=document.createElement('div');el.className='visual-player team-away'+(i===0?' goalkeeper':'');el.id='ap'+i;el.style.left=aPos[i].x+'%';el.style.top=aPos[i].y+'%';el.textContent=i===0?'GK':p.name.substring(0,2);el.title=p.name;pc.appendChild(el);}); updateBP(); startM(); function startM(){interval=setInterval(()=>{if(paused||finished)return;second++;if(second>=60){second=0;minute++;if(minute===45){addVE('event-info','⏸️ INTERVALO');setTimeout(()=>{minute=45;second=0;addVE('event-info','▶️ 2º Tempo');resetPos();},2000/speed);}if(minute>=90){finished=true;clearInterval(interval);addVE('event-info','⏹️ FIM');m.g1=cg1;m.g2=cg2;m.sh1=sh1;m.sh2=sh2;m.yc1=yc1;m.yc2=yc2;const le=document.getElementById('vLog');if(le){const bd=document.createElement('div');bd.style.textAlign='center';bd.style.marginTop='8px';bd.innerHTML='<button class="btn" onclick="dispMRfromV('+JSON.stringify(m).replace(/"/g,'&quot;')+')">📊 Resultado</button>';le.appendChild(bd);}return;}}document.getElementById('chrono').textContent=String(minute).padStart(2,'0')+':'+String(second).padStart(2,'0');movePl();moveBall();if(Math.random()<0.008*speed){if(Math.random()<0.5){sh1++;const s=hp[Math.floor(Math.random()*11)];addVE('event-info',fmtT()+' 🥅 Chute de '+s.name+' ('+m.team1+')');}else{sh2++;const s=ap[Math.floor(Math.random()*11)];addVE('event-info',fmtT()+' 🥅 Chute de '+s.name+' ('+m.team2+')');}document.getElementById('vSh').textContent=sh1+'-'+sh2;}if(Math.random()<0.003*speed&&cg1+cg2<4){if(Math.random()<0.5){cg1++;const s=hp[Math.floor(Math.random()*11)];ps1[s.name].g++;addVE('event-goal-home',fmtT()+' ⚽ GOL! '+s.name+' ('+m.team1+') '+cg1+'-'+cg2);}else{cg2++;const s=ap[Math.floor(Math.random()*11)];ps2[s.name].g++;addVE('event-goal-away',fmtT()+' ⚽ GOL! '+s.name+' ('+m.team2+') '+cg1+'-'+cg2);}document.getElementById('vScore').textContent=cg1+'-'+cg2;updPSV();resetPos();}if(Math.random()<0.001*speed){if(Math.random()<0.5){yc1++;const p=hp[Math.floor(Math.random()*11)];ps1[p.name].yc++;addVE('event-yellow',fmtT()+' 🟨 '+p.name+' ('+m.team1+')');}else{yc2++;const p=ap[Math.floor(Math.random()*11)];ps2[p.name].yc++;addVE('event-yellow',fmtT()+' 🟨 '+p.name+' ('+m.team2+')');}document.getElementById('vYc').textContent=yc1+'-'+yc2;updPSV();}},120/speed);} function movePl(){document.querySelectorAll('.visual-player').forEach(el=>{if(el.classList.contains('goalkeeper'))return;el.style.left=Math.max(2,Math.min(88,parseFloat(el.style.left)+(Math.random()*3-1.5)))+'%';el.style.top=Math.max(5,Math.min(85,parseFloat(el.style.top)+(Math.random()*3-1.5)))+'%';});} function moveBall(){const ball=document.getElementById('ball');if(!ball)return;const pe=document.getElementById((poss==='home'?'hp':'ap')+pwb);if(pe){ball.style.left=(parseFloat(pe.style.left)+1)+'%';ball.style.top=(parseFloat(pe.style.top)+1)+'%';}if(Math.random()<0.03){poss=poss==='home'?'away':'home';pwb=Math.floor(Math.random()*11);updateBP();}} function updateBP(){document.querySelectorAll('.visual-player').forEach(e=>e.classList.remove('with-ball'));const pe=document.getElementById((poss==='home'?'hp':'ap')+pwb);if(pe)pe.classList.add('with-ball');} function addVE(cls,msg){const el=document.getElementById('vEvents');if(!el)return;const d=document.createElement('div');d.className='event-item '+cls;d.textContent=msg;el.appendChild(d);document.getElementById('vLog').scrollTop=document.getElementById('vLog').scrollHeight;} function updPSV(){const c1=document.getElementById('vPs1'),c2=document.getElementById('vPs2');if(c1)c1.innerHTML=hp.map(p=>`<div class="player-stat-row"><span>${p.name}</span><span>${ps1[p.name].g>0?'⚽'+ps1[p.name].g:''}${ps1[p.name].yc>0?' 🟨':''}</span></div>`).join('');if(c2)c2.innerHTML=ap.map(p=>`<div class="player-stat-row"><span>${p.name}</span><span>${ps2[p.name].g>0?'⚽'+ps2[p.name].g:''}${ps2[p.name].yc>0?' 🟨':''}</span></div>`).join('');} function resetPos(){hp.forEach((p,i)=>{const el=document.getElementById('hp'+i);if(el){el.style.left=hPos[i].x+'%';el.style.top=hPos[i].y+'%'}});ap.forEach((p,i)=>{const el=document.getElementById('ap'+i);if(el){el.style.left=aPos[i].x+'%';el.style.top=aPos[i].y+'%'}});document.getElementById('ball').style.left='47%';document.getElementById('ball').style.top='47%';} function fmtT(){return String(minute).padStart(2,'0')+':'+String(second).padStart(2,'0');} window.toggleP=function(){paused=!paused;document.getElementById('btnP').textContent=paused?'▶️':'⏸️';}; window.changeSp=function(){if(speed===1)speed=2;else if(speed===2)speed=4;else speed=1;document.getElementById('btnSp').textContent=speed+'x';clearInterval(interval);startM();}; window.dispMRfromV=function(d){const m2=typeof d==='string'?JSON.parse(d):d;dispMR(m2);}; }
 
         // ============================================
         // MODO CARREIRA
@@ -679,17 +640,19 @@
         function renderCS(){document.getElementById('careerContent').innerHTML='<h3>Escolha o Time:</h3>'+renderLG('career');}
         function selectCT(tm,ln){gs.ct=tm;gs.cl=ln;gs.cs=getTP(tm);gs.co=calcOVR(gs.cs);gs.cd=getTD(tm);document.getElementById('careerScreen').classList.add('hidden');document.getElementById('careerManagement').classList.remove('hidden');renderCM();}
         function renderCM(){const c=document.getElementById('careerManagementContent');c.innerHTML=`<h2>${gs.ct}</h2><button class="btn btn-edit" onclick="openETM('career')">Editar</button><div class="team-overall-display" style="font-size:2em;">${gs.co}</div><div class="simulation-options"><div class="sim-card" onclick="simCM('quick')"><h3>⚡ Partida</h3></div><div class="sim-card" onclick="simCM('minute')"><h3>⏱️ Minuto</h3></div><div class="sim-card" onclick="simCM('visual')"><h3>🔵 11x11</h3></div></div><button class="btn" onclick="goToMain()">Voltar</button>`;}
-        function showCTab(tab){const c=document.getElementById('careerTabContent');if(tab==='squad'){const pl=gs.cs,st=pl.slice(0,11),bn=pl.slice(11),sst=subState.career;let h='<div class="team-details"><h3>Elenco</h3>';if(sst.p1!==null)h+=`<div class="substitution-panel"><button class="btn btn-cancel" onclick="clearSub(\'career\');showCTab(\'squad\');">Cancelar</button></div>`;h+=`<div class="formation-pitch">${renderCF(st,pl,sst)}</div><div class="squad-container"><div class="squad-column starters"><h4>Titulares</h4><div class="squad-list">${renderCSL(st,'starter',pl,sst)}</div></div><div class="squad-column bench"><h4>Reservas</h4><div class="squad-list">${renderCSL(bn,'bench',pl,sst)}</div></div></div></div>`;c.innerHTML=h;}else c.innerHTML='<h3>Em breve</h3>';}
+        function showCTab(tab){const c=document.getElementById('careerTabContent');if(tab==='squad'){const pl=gs.cs,st=pl.slice(0,11),bn=pl.slice(11),sst=subState.career;let h='<div class="team-details"><h3>Elenco</h3>';if(sst.p1!==null)h+=`<div class="substitution-panel"><button class="btn btn-cancel" onclick="clearSub(\'career\');showCTab(\'squad\');">Cancelar</button></div>`;h+=`<div class="formation-pitch">${renderCF(st,pl,sst)}</div><div class="squad-container"><div class="squad-column starters"><h4>Titulares</h4><div class="squad-list">${renderSL('career',st,'starter',pl,sst)}</div></div><div class="squad-column bench"><h4>Reservas</h4><div class="squad-list">${renderSL('career',bn,'bench',pl,sst)}</div></div></div></div>`;c.innerHTML=h;}else c.innerHTML='<h3>Em breve</h3>';}
         function renderCF(st,all,sst){const pos=getFP('4-4-2');let h='';const fp=st.slice(0,11);pos.forEach((p,i)=>{const pl=fp[i];if(pl){const pi=all.indexOf(pl);h+=`<div class="player-dot ${sst.p1===pi?'selected-for-sub':''}" style="left:${p.x}%;top:${p.y}%;" onclick="handlePC('career',${pi},'starter')"><span class="player-name">${pl.name.split(' ')[0]}</span>${pl.position}<span class="player-rating">${pl.rating}</span></div>`;}});return h;}
-        function renderCSL(pl,pt,all,sst){let h='';pl.forEach(p=>{const oi=all.indexOf(p);h+=`<div class="squad-player ${pt} ${sst.p1===oi?'selected-for-sub':''}" onclick="handlePC('career',${oi},'${pt}')"><span>${p.number} - ${p.name} (${p.position})</span><span class="player-rating-display">${p.rating}</span></div>`;});return h;}
         function simCM(t){const m=genMR();m.team1=gs.ct;m.team2='Adversário';m.t1o=gs.co;m.t2o=Math.floor(Math.random()*15)+70;m.t1d=gs.cd;m.t2d={stadium:'Visitante',coach:'Técnico',tactic:'balanced',tacticName:'Equilibrado'};document.getElementById('careerManagement').classList.add('hidden');document.getElementById('simulationScreen').classList.remove('hidden');if(t==='quick')dispMR(m);else if(t==='minute')simMM(m);else simV11(m);}
 
         // ============================================
         // INICIALIZAÇÃO
         // ============================================
         document.addEventListener('DOMContentLoaded', () => {
-            console.log('⚽ Simulador v6.0 - Apenas titulares fazem lances!');
-            console.log('✅ Substituições: titular sai, reserva entra e NÃO pode ser substituído novamente');
+            console.log('⚽ Simulador v7.0 - Substituição por posição!');
+            console.log('✅ Goleiros NUNCA são substituídos');
+            console.log('✅ Defensor só troca por defensor (ZAG/LAT)');
+            console.log('✅ Meia só troca por meia (VOL/MEI)');
+            console.log('✅ Atacante só troca por atacante (ATA/PE)');
             loadLS(); loadConfig();
             updateSI(editedTeams.size > 0);
         });

@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚽ FIFA CAREER MODE - Modo Carreira Completo ⚽</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a2e1c 0%, #05140a 100%);
+            min-height: 100vh;
+            color: white;
+            padding: 20px;
+        }
+        .container { max-width: 1600px; margin: 0 auto; }
+        
+        /* Telas */
+        .screen { display: none; animation: fadeIn 0.5s; }
+        .screen.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        /* Cards */
+        .league-grid, .team-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin: 30px 0; }
+        .league-card, .team-card {
+            background: rgba(0,0,0,0.7); border-radius: 20px; padding: 25px; text-align: center;
+            cursor: pointer; transition: all 0.3s; border: 2px solid transparent;
+        }
+        .league-card:hover, .team-card:hover { transform: translateY(-5px); border-color: gold; background: rgba(0,0,0,0.85); }
+        .league-icon { font-size: 3em; margin-bottom: 10px; }
+        .league-name { font-size: 1.3em; font-weight: bold; }
+        
+        /* Menu da carreira */
+        .career-menu {
+            display: flex; gap: 10px; margin-bottom: 30px; flex-wrap: wrap;
+            background: rgba(0,0,0,0.5); padding: 15px; border-radius: 15px;
+        }
+        .menu-btn {
+            background: rgba(0,0,0,0.6); padding: 12px 25px; border-radius: 10px;
+            cursor: pointer; transition: all 0.3s; font-weight: bold;
+        }
+        .menu-btn:hover { background: gold; color: black; }
+        .menu-btn.active { background: gold; color: black; }
+        
+        /* Painéis */
+        .panel { display: none; }
+        .panel.active { display: block; }
+        
+        /* Calendário */
+        .calendar-container { max-height: 500px; overflow-y: auto; }
+        .calendar-month {
+            background: rgba(0,0,0,0.5); border-radius: 15px; margin-bottom: 20px; padding: 15px;
+        }
+        .month-title { font-size: 1.3em; color: gold; margin-bottom: 15px; padding-bottom: 5px; border-bottom: 1px solid gold; }
+        .game-item {
+            background: rgba(0,0,0,0.4); padding: 12px; margin: 8px 0; border-radius: 10px;
+            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
+        }
+        .game-item.pending { border-left: 4px solid #ff9800; }
+        .game-item.completed { border-left: 4px solid #4CAF50; }
+        .game-result { font-weight: bold; }
+        .game-simulate {
+            background: gold; color: black; border: none; padding: 5px 15px;
+            border-radius: 8px; cursor: pointer; font-weight: bold;
+        }
+        .game-simulate:hover { background: #ff6b00; color: white; }
+        
+        /* Tabela */
+        .table-container { overflow-x: auto; margin: 20px 0; }
+        table { width: 100%; border-collapse: collapse; background: rgba(0,0,0,0.5); border-radius: 15px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.2); }
+        th { background: gold; color: black; font-weight: bold; }
+        .my-team { background: rgba(76, 175, 80, 0.3); }
+        
+        /* Artilharia */
+        .top-scorers { background: rgba(0,0,0,0.5); border-radius: 15px; padding: 15px; }
+        .scorer-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.2); }
+        
+        /* Modal de simulação */
+        .modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); z-index: 1000; justify-content: center; align-items: center;
+        }
+        .modal-content {
+            background: #1a1a1a; border-radius: 20px; padding: 30px; max-width: 600px;
+            width: 90%; border: 2px solid gold; max-height: 80%; overflow-y: auto;
+        }
+        .modal-sim-buttons { display: flex; gap: 15px; margin: 20px 0; flex-wrap: wrap; }
+        .modal-sim-btn {
+            flex: 1; padding: 12px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold;
+        }
+        .sim-rapida { background: gold; color: black; }
+        .sim-minuto { background: #2196F3; color: white; }
+        .sim-bolinhas { background: #4CAF50; color: white; }
+        
+        .back-btn { background: #4a4a4a; padding: 10px 20px; border: none; border-radius: 10px; color: white; cursor: pointer; margin-bottom: 20px; }
+        .close-btn { background: #f44336; padding: 8px 15px; border: none; border-radius: 8px; color: white; cursor: pointer; }
+        
+        .minute-sim { max-height: 300px; overflow-y: auto; }
+        .minute-event { padding: 8px; margin: 5px; background: rgba(255,255,255,0.05); border-radius: 5px; }
+        .goal { color: #4caf50; }
+        .yellow { color: #ffd700; }
+        .red { color: #ff4444; }
+        
+        @media (max-width: 768px) {
+            .game-item { flex-direction: column; text-align: center; }
+            .calendar-month { padding: 10px; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- TELA 1: SELEÇÃO DE LIGA -->
+    <div id="leagueScreen" class="screen active">
+        <div style="text-align: center; margin-bottom: 40px;">
+            <h1 style="font-size: 2.5em;">⚽ FIFA CAREER MODE ⚽</h1>
+            <p>Selecione a liga para iniciar sua carreira</p>
+        </div>
+        <div class="league-grid" id="leagueGrid"></div>
+    </div>
+
+    <!-- TELA 2: SELEÇÃO DE TIME -->
+    <div id="teamScreen" class="screen">
+        <button class="back-btn" onclick="voltarLigas()">← Voltar</button>
+        <h2 id="selectedLeagueName"></h2>
+        <div class="team-grid" id="teamGrid"></div>
+    </div>
+
+    <!-- TELA 3: MODO CARREIRA PRINCIPAL -->
+    <div id="careerScreen" class="screen">
+        <div class="career-menu">
+            <div class="menu-btn" onclick="showCareerPanel('calendar')">📅 CALENDÁRIO</div>
+            <div class="menu-btn" onclick="showCareerPanel('table')">📊 TABELA</div>
+            <div class="menu-btn" onclick="showCareerPanel('scorers')">⚽ ARTILHARIA</div>
+            <div class="menu-btn" onclick="showCareerPanel('squad')">👥 ELENCO</div>
+            <div class="menu-btn" onclick="showCareerPanel('simulate')">🎮 SIMULAR</div>
+        </div>
+
+        <div id="calendarPanel" class="panel active">
+            <h2>📅 CALENDÁRIO DE JOGOS</h2>
+            <div class="calendar-container" id="calendarContainer"></div>
+        </div>
+
+        <div id="tablePanel" class="panel">
+            <h2>📊 TABELA DE CLASSIFICAÇÃO</h2>
+            <div class="table-container" id="tableContainer"></div>
+        </div>
+
+        <div id="scorersPanel" class="panel">
+            <h2>⚽ ARTILHARIA</h2>
+            <div class="top-scorers" id="scorersContainer"></div>
+        </div>
+
+        <div id="squadPanel" class="panel">
+            <h2>👥 ELENCO DO TIME</h2>
+            <div id="squadContainer"></div>
+        </div>
+
+        <div id="simulatePanel" class="panel">
+            <h2>🎮 SIMULAR MÚLTIPLOS JOGOS</h2>
+            <div class="simulation-buttons">
+                <button class="sim-btn btn-full" onclick="simularProximoJogo()">🎮 SIMULAR PRÓXIMO JOGO</button>
+                <button class="sim-btn btn-full" onclick="simularProximos5Jogos()">⏩ SIMULAR PRÓXIMOS 5 JOGOS</button>
+                <button class="sim-btn btn-full" onclick="simularRestanteTemporada()">🏆 SIMULAR RESTO DA TEMPORADA</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DE SIMULAÇÃO -->
+<div id="simModal" class="modal">
+    <div class="modal-content">
+        <h3 id="modalGameTitle">⚽ Simular Partida</h3>
+        <div id="modalGameInfo"></div>
+        <div class="modal-sim-buttons">
+            <button class="modal-sim-btn sim-rapida" onclick="simularModalRapida()">🎮 SIMULAÇÃO RÁPIDA</button>
+            <button class="modal-sim-btn sim-minuto" onclick="simularModalMinuto()">⏱️ MINUTO A MINUTO</button>
+            <button class="modal-sim-btn sim-bolinhas" onclick="simularModalBolinhas()">⚽ JOGO DAS BOLINHAS</button>
+        </div>
+        <div id="modalResultArea" class="result-area" style="display:none; margin-top:20px;"></div>
+        <button class="close-btn" onclick="fecharModal()" style="margin-top:20px;">Fechar</button>
+    </div>
+</div>
+
+<script>
+// ==================== DADOS COMPLETOS ====================
+
+// LIGAS DISPONÍVEIS
+const LIGAS = {
+    premier: { nome: "🏴󠁧󠁢󠁥󠁮󠁧󠁿 Premier League", icone: "🦁", times: [
+        "Manchester City", "Liverpool", "Arsenal", "Chelsea", "Manchester United", "Newcastle", "Tottenham", "Aston Villa",
+        "Brighton", "West Ham", "Brentford", "Fulham", "Crystal Palace", "Wolves", "Everton", "Nottingham Forest",
+        "Bournemouth", "Luton Town", "Burnley", "Sheffield United"
+    ]},
+    laliga: { nome: "🇪🇸 La Liga", icone: "👑", times: [
+        "Real Madrid", "Barcelona", "Atlético Madrid", "Real Sociedad", "Sevilla", "Villarreal", "Real Betis", "Athletic Bilbao",
+        "Osasuna", "Valencia", "Getafe", "Rayo Vallecano", "Celta Vigo", "Girona", "Almería", "Las Palmas", "Cádiz", "Mallorca", "Granada", "Alavés"
+    ]},
+    seriea: { nome: "🇮🇹 Serie A TIM", icone: "⚫", times: [
+        "Inter Milan", "AC Milan", "Juventus", "Napoli", "Lazio", "Roma", "Atalanta", "Fiorentina", "Bologna", "Torino",
+        "Monza", "Genoa", "Sassuolo", "Udinese", "Lecce", "Cagliari", "Empoli", "Salernitana", "Frosinone", "Verona"
+    ]},
+    bundesliga: { nome: "🇩🇪 Bundesliga", icone: "🦅", times: [
+        "Bayern Munich", "Borussia Dortmund", "RB Leipzig", "Bayer Leverkusen", "Union Berlin", "Freiburg", "Wolfsburg",
+        "Mainz", "Mönchengladbach", "Eintracht Frankfurt", "Hoffenheim", "Stuttgart", "Augsburg", "Werder Bremen",
+        "Bochum", "Heidenheim", "Darmstadt", "Köln", "Schalke 04", "Hertha Berlin"
+    ]},
+    ligue1: { nome: "🇫🇷 Ligue 1", icone: "🐓", times: [
+        "PSG", "Marseille", "Monaco", "Lyon", "Lille", "Rennes", "Nice", "Lens", "Reims", "Strasbourg",
+        "Montpellier", "Nantes", "Brest", "Toulouse", "Clermont", "Le Havre", "Metz", "Lorient", "Ajaccio", "Troyes"
+    ]},
+    brasileirao: { nome: "🇧🇷 Brasileirão", icone: "⭐", times: [
+        "Flamengo", "Palmeiras", "São Paulo", "Corinthians", "Internacional", "Grêmio", "Fluminense", "Athletico-PR",
+        "Santos", "Cruzeiro", "Fortaleza", "Bahia", "Botafogo", "Vasco", "Goiás", "Coritiba", "Cuiabá", "América-MG",
+        "Red Bull Bragantino", "Atlético-MG"
+    ]}
+};
+
+// FORÇA DOS TIMES (0-100)
+const FORCA_TIMES = {
+    "Manchester City": 94, "Liverpool": 93, "Arsenal": 91, "Chelsea": 90, "Manchester United": 89,
+    "Real Madrid": 95, "Barcelona": 94, "Atlético Madrid": 90,
+    "Bayern Munich": 94, "Borussia Dortmund": 90,
+    "Inter Milan": 92, "AC Milan": 91, "Juventus": 90, "Napoli": 89,
+    "PSG": 93,
+    "Flamengo": 92, "Palmeiras": 91, "São Paulo": 88, "Corinthians": 87, "Internacional": 86,
+    "Grêmio": 85, "Fluminense": 85, "Athletico-PR": 83, "Santos": 82, "Cruzeiro": 81,
+    "Fortaleza": 82, "Bahia": 80, "Botafogo": 81, "Vasco": 80, "Goiás": 78,
+    "Coritiba": 77, "Cuiabá": 76, "América-MG": 76, "Red Bull Bragantino": 79, "Atlético-MG": 84
+};
+for(const liga of Object.values(LIGAS)) {
+    for(const time of liga.times) {
+        if(!FORCA_TIMES[time]) FORCA_TIMES[time] = 80;
+    }
+}
+
+// VARIÁVEIS GLOBAIS
+let ligaSelecionada = null;
+let timeSelecionado = null;
+let carreira = null;
+let currentGameIndex = null;
+let modalInterval = null;
+
+// NOMES DE JOGADORES
+const NOMES_JOGADORES = {
+    goleiros: ["Alisson", "Ederson", "Courtois", "Neuer", "Oblak", "Maignan", "Donnarumma", "Ter Stegen"],
+    laterais: ["Cafu", "Marcelo", "Roberto Carlos", "Dani Alves", "Felipe Luis", "Alexander-Arnold", "Robertson", "Cancelo"],
+    zagueiros: ["Thiago Silva", "Marquinhos", "Van Dijk", "Ramos", "Pique", "Chiellini", "Bonucci", "Ruben Dias"],
+    volantes: ["Casemiro", "Fabinho", "Busquets", "Kimmich", "Rodri", "Partey", "Jorginho", "Brozovic"],
+    meias: ["Modric", "Kroos", "De Bruyne", "Bernardo Silva", "Bruno Fernandes", "Pedri", "Gavi", "Bellingham"],
+    atacantes: ["Cristiano Ronaldo", "Messi", "Neymar", "Mbappé", "Haaland", "Lewandowski", "Kane", "Vinicius Jr"]
+};
+
+// ==================== FUNÇÕES PRINCIPAIS ====================
+
+function carregarLigas() {
+    const grid = document.getElementById('leagueGrid');
+    grid.innerHTML = "";
+    for(const [key, liga] of Object.entries(LIGAS)) {
+        const card = document.createElement('div');
+        card.className = 'league-card';
+        card.innerHTML = `<div class="league-icon">${liga.icone}</div><div class="league-name">${liga.nome}</div><div>${liga.times.length} times</div>`;
+        card.onclick = () => selecionarLiga(key);
+        grid.appendChild(card);
+    }
+}
+
+function selecionarLiga(ligaKey) {
+    ligaSelecionada = ligaKey;
+    const liga = LIGAS[ligaKey];
+    document.getElementById('selectedLeagueName').innerHTML = `${liga.icone} ${liga.nome}`;
+    
+    const grid = document.getElementById('teamGrid');
+    grid.innerHTML = "";
+    liga.times.forEach(time => {
+        const card = document.createElement('div');
+        card.className = 'team-card';
+        card.innerHTML = `<div style="font-size:2em">⚽</div><div class="league-name">${time}</div><div>⭐ Força: ${FORCA_TIMES[time] || 80}</div>`;
+        card.onclick = () => selecionarTime(time);
+        grid.appendChild(card);
+    });
+    
+    document.getElementById('leagueScreen').classList.remove('active');
+    document.getElementById('teamScreen').classList.add('active');
+}
+
+function selecionarTime(time) {
+    timeSelecionado = time;
+    iniciarCarreira();
+}
+
+function voltarLigas() {
+    document.getElementById('teamScreen').classList.remove('active');
+    document.getElementById('leagueScreen').classList.add('active');
+}
+
+function gerarJogadores(timeNome, forca) {
+    const jogadores = [];
+    const posicoes = ["GOL","ZAG","ZAG","LAT","LAT","MEI","MEI","MEI","ATA","ATA","MEI","ZAG","LAT","ATA","GOL","VOL","VOL","ATA","ZAG","LAT","MEI","ATA","GOL"];
+    for(let i=0;i<23;i++) {
+        let lista = i<3 ? NOMES_JOGADORES.goleiros : (i<7 ? NOMES_JOGADORES.zagueiros : (i<11 ? NOMES_JOGADORES.laterais : (i<15 ? NOMES_JOGADORES.volantes : (i<20 ? NOMES_JOGADORES.meias : NOMES_JOGADORES.atacantes))));
+        const overall = Math.min(99, Math.max(60, forca + (Math.random()*15-7)));
+        jogadores.push({
+            id: i+1,
+            nome: `${lista[i%lista.length]} ${timeNome.substring(0,3)}${i+1}`,
+            posicao: posicoes[i],
+            overall: Math.round(overall),
+            numero: i+1,
+            gols: 0
+        });
+    }
+    return jogadores.sort((a,b)=>b.overall-a.overall);
+}
+
+function iniciarCarreira() {
+    const liga = LIGAS[ligaSelecionada];
+    const times = liga.times;
+    const forcaTime = FORCA_TIMES[timeSelecionado] || 80;
+    
+    // Inicializar dados da carreira
+    carreira = {
+        time: timeSelecionado,
+        forca: forcaTime,
+        liga: ligaSelecionada,
+        jogadores: gerarJogadores(timeSelecionado, forcaTime),
+        jogos: [],
+        tabela: {},
+        artilharia: [],
+        dataAtual: new Date(2024, 7, 15), // Agosto de 2024
+        rodadaAtual: 0
+    };
+    
+    // Inicializar tabela
+    for(const t of times) {
+        carreira.tabela[t] = {
+            pontos: 0, vitorias: 0, empates: 0, derrotas: 0,
+            golsPro: 0, golsContra: 0, jogos: 0
+        };
+    }
+    
+    // Gerar calendário (38 rodadas - ida e volta)
+    const numTimes = times.length;
+    const totalRodadas = (numTimes - 1) * 2;
+    
+    for(let rodada = 1; rodada <= totalRodadas; rodada++) {
+        const jogosRodada = [];
+        // Gerar jogos da rodada
+        for(let i = 0; i < numTimes; i++) {
+            for(let j = i+1; j < numTimes; j++) {
+                let jogoId = (rodada <= numTimes-1) ? `ida_${i}_${j}` : `volta_${i}_${j}`;
+                if(!carreira.jogos.some(g => g.id === jogoId)) {
+                    const mandante = rodada <= numTimes-1 ? times[i] : times[j];
+                    const visitante = rodada <= numTimes-1 ? times[j] : times[i];
+                    jogosRodada.push({
+                        id: jogoId,
+                        rodada: rodada,
+                        mandante: mandante,
+                        visitante: visitante,
+                        golsMandante: 0,
+                        golsVisitante: 0,
+                        realizado: false
+                    });
+                }
+            }
+        }
+        carreira.jogos.push(...jogosRodada.slice(0, Math.floor(numTimes/2)));
+    }
+    
+    // Remover duplicatas
+    const jogosUnicos = [];
+    const ids = new Set();
+    for(const jogo of carreira.jogos) {
+        if(!ids.has(jogo.id)) {
+            ids.add(jogo.id);
+            jogosUnicos.push(jogo);
+        }
+    }
+    carreira.jogos = jogosUnicos.sort((a,b) => a.rodada - b.rodada);
+    
+    document.getElementById('teamScreen').classList.remove('active');
+    document.getElementById('careerScreen').classList.add('active');
+    
+    atualizarCalendar();
+    atualizarTabela();
+    atualizarArtilharia();
+    atualizarElenco();
+}
+
+function simularJogo(jogo, tipoSimulacao = 'rapida', callback) {
+    const forcaMandante = FORCA_TIMES[jogo.mandante] || 80;
+    const forcaVisitante = FORCA_TIMES[jogo.visitante] || 80;
+    const probMandante = forcaMandante / (forcaMandante + forcaVisitante);
+    
+    if(tipoSimulacao === 'rapida') {
+        let golsM = 0, golsV = 0;
+        for(let i=0;i<90;i+=10) {
+            if(Math.random() < probMandante * 0.3) golsM++;
+            if(Math.random() < (1-probMandante) * 0.25) golsV++;
+        }
+        finalizarJogo(jogo, golsM, golsV);
+        if(callback) callback(golsM, golsV);
+        return { golsM, golsV };
+    } else if(tipoSimulacao === 'minuto') {
+        simularMinutoAMinuto(jogo, probMandante, callback);
+    } else if(tipoSimulacao === 'bolinhas') {
+        simularBolinhas(jogo, probMandante, callback);
+    }
+}
+
+function finalizarJogo(jogo, golsM, golsV) {
+    jogo.realizado = true;
+    jogo.golsMandante = golsM;
+    jogo.golsVisitante = golsV;
+    
+    // Atualizar tabela
+    const mandante = carreira.tabela[jogo.mandante];
+    const visitante = carreira.tabela[jogo.visitante];
+    
+    mandante.jogos++;
+    visitante.jogos++;
+    mandante.golsPro += golsM;
+    mandante.golsContra += golsV;
+    visitante.golsPro += golsV;
+    visitante.golsContra += golsM;
+    
+    if(golsM > golsV) {
+        mandante.pontos += 3;
+        mandante.vitorias++;
+        visitante.derrotas++;
+    } else if(golsV > golsM) {
+        visitante.pontos += 3;
+        visitante.vitorias++;
+        mandante.derrotas++;
+    } else {
+        mandante.pontos += 1;
+        visitante.pontos += 1;
+        mandante.empates++;
+        visitante.empates++;
+    }
+    
+    // Atualizar artilharia do seu time
+    if(jogo.mandante === timeSelecionado && golsM > 0) {
+        const jogadoresTime = carreira.jogadores;
+        const artilheiro = jogadoresTime[Math.floor(Math.random() * jogadoresTime.length)];
+        artilheiro.gols = (artilheiro.gols || 0) + golsM;
+        atualizarArtilharia();
+    }
+    if(jogo.visitante === timeSelecionado && golsV > 0) {
+        const jogadoresTime = carreira.jogadores;
+        const artilheiro = jogadoresTime[Math.floor(Math.random() * jogadoresTime.length)];
+        artilheiro.gols = (artilheiro.gols || 0) + golsV;
+        atualizarArtilharia();
+    }
+    
+    atualizarCalendar();
+    atualizarTabela();
+}
+
+// ==================== SIMULAÇÕES COM ANIMAÇÃO ====================
+
+async function simularMinutoAMinuto(jogo, probMandante, callback) {
+    const modalResult = document.getElementById('modalResultArea');
+    modalResult.innerHTML = '<div id="minuteEvents" style="max-height:300px;overflow-y:auto"></div><div id="minuteFinal"></div>';
+    modalResult.style.display = 'block';
+    
+    const eventDiv = document.getElementById('minuteEvents');
+    let golsM = 0, golsV = 0;
+    
+    for(let minuto=1; minuto<=90; minuto++) {
+        if(Math.random() < probMandante * 0.008) {
+            golsM++;
+            eventDiv.innerHTML += `<div class="minute-event goal">⚽ GOL! ${jogo.mandante} aos ${minuto}'! (${golsM}x${golsV})</div>`;
+            eventDiv.scrollTop = eventDiv.scrollHeight;
+            await new Promise(r => setTimeout(r, 80));
+        } else if(Math.random() < (1-probMandante) * 0.007) {
+            golsV++;
+            eventDiv.innerHTML += `<div class="minute-event goal">⚽ GOL! ${jogo.visitante} aos ${minuto}'! (${golsM}x${golsV})</div>`;
+            eventDiv.scrollTop = eventDiv.scrollHeight;
+            await new Promise(r => setTimeout(r, 80));
+        }
+    }
+    
+    document.getElementById('minuteFinal').innerHTML = `<div style="font-size:2em;text-align:center;margin-top:20px">${golsM} : ${golsV}</div>`;
+    finalizarJogo(jogo, golsM, golsV);
+    if(callback) callback(golsM, golsV);
+}
+
+function simularBolinhas(jogo, probMandante, callback) {
+    const modalResult = document.getElementById('modalResultArea');
+    modalResult.innerHTML = `<div style="text-align:center;margin:20px 0;font-size:2em" id="bolinhasPlacar">0:0</div><div id="bolinhasLog" style="max-height:200px;overflow-y:auto"></div>`;
+    modalResult.style.display = 'block';
+    
+    let golsM = 0, golsV = 0;
+    let jogada = 0;
+    const logDiv = document.getElementById('bolinhasLog');
+    const placarDiv = document.getElementById('bolinhasPlacar');
+    
+    if(modalInterval) clearInterval(modalInterval);
+    modalInterval = setInterval(() => {
+        jogada++;
+        if(jogada > 40) {
+            clearInterval(modalInterval);
+            finalizarJogo(jogo, golsM, golsV);
+            if(callback) callback(golsM, golsV);
+            logDiv.innerHTML += `<div class="minute-event goal">🏆 FIM DE JOGO! ${golsM} x ${golsV}</div>`;
+            return;
+        }
+        
+        if(Math.random() < probMandante * 0.12) {
+            golsM++;
+            placarDiv.innerHTML = `${golsM}:${golsV}`;
+            logDiv.innerHTML += `<div class="minute-event goal">⚽ GOL! ${jogo.mandante} (${golsM}x${golsV})</div>`;
+        } else if(Math.random() < (1-probMandante) * 0.1) {
+            golsV++;
+            placarDiv.innerHTML = `${golsM}:${golsV}`;
+            logDiv.innerHTML += `<div class="minute-event goal">⚽ GOL! ${jogo.visitante} (${golsM}x${golsV})</div>`;
+        }
+        logDiv.scrollTop = logDiv.scrollHeight;
+    }, 500);
+}
+
+// ==================== INTERFACE DO USUÁRIO ====================
+
+function atualizarCalendar() {
+    const container = document.getElementById('calendarContainer');
+    const meses = ['Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio'];
+    let currentMonth = 0;
+    let html = '';
+    
+    for(let i=0; i<carreira.jogos.length; i+=5) {
+        const mes = meses[Math.floor(i/5) % meses.length];
+        html += `<div class="calendar-month"><div class="month-title">📅 ${mes} 2024</div>`;
+        
+        for(let j=0; j<5 && i+j < carreira.jogos.length; j++) {
+            const jogo = carreira.jogos[i+j];
+            const status = jogo.realizado ? `✅ ${jogo.golsMandante} x ${jogo.golsVisitante}` : '⏳ Pendente';
+            const statusClass = jogo.realizado ? 'completed' : 'pending';
+            html += `
+                <div class="game-item ${statusClass}">
+                    <span><strong>Rodada ${jogo.rodada}</strong></span>
+                    <span>🏠 ${jogo.mandante} vs ✈️ ${jogo.visitante}</span>
+                    <span class="game-result">${status}</span>
+                    ${!jogo.realizado ? `<button class="game-simulate" onclick="abrirModalSimulacao(${i+j})">▶ SIMULAR</button>` : ''}
+                </div>
+            `;
+        }
+        html += `</div>`;
+    }
+    container.innerHTML = html;
+}
+
+function atualizarTabela() {
+    const sorted = Object.entries(carreira.tabela).sort((a,b) => {
+        if(a[1].pontos !== b[1].pontos) return b[1].pontos - a[1].pontos;
+        return (b[1].golsPro - b[1].golsContra) - (a[1].golsPro - a[1].golsContra);
+    });
+    
+    let html = `<table><thead><th>Pos</th><th>Time</th><th>Pts</th><th>J</th><th>V</th><th>E</th><th>D</th><th>GP</th><th>GC</th><th>SG</th></thead><tbody>`;
+    sorted.forEach(([time, s], idx) => {
+        const sg = s.golsPro - s.golsContra;
+        const myTeamClass = time === timeSelecionado ? 'my-team' : '';
+        html += `<tr class="${myTeamClass}"><td>${idx+1}</td><td><strong>${time}</strong></td><td>${s.pontos}</td><td>${s.jogos}</td><td>${s.vitorias}</td><td>${s.empates}</td><td>${s.derrotas}</td><td>${s.golsPro}</td><td>${s.golsContra}</td><td>${sg}</td></tr>`;
+    });
+    html += `</tbody></table>`;
+    document.getElementById('tableContainer').innerHTML = html;
+}
+
+function atualizarArtilharia() {
+    const artilheiros = [...carreira.jogadores].sort((a,b) => (b.gols || 0) - (a.gols || 0)).slice(0, 10);
+    let html = '';
+    artilheiros.forEach((jogador, idx) => {
+        html += `<div class="scorer-item"><span>${idx+1}. ${jogador.nome}</span><span>⚽ ${jogador.gols || 0} gols</span></div>`;
+    });
+    if(artilheiros.length === 0 || artilheiros.every(a => (a.gols || 0) === 0)) {
+        html = '<p>Nenhum gol marcado ainda</p>';
+    }
+    document.getElementById('scorersContainer').innerHTML = html;
+}
+
+function atualizarElenco() {
+    const container = document.getElementById('squadContainer');
+    let html = `<div class="top-scorers"><h3>⭐ Titulares</h3>`;
+    const titulares = carreira.jogadores.slice(0, 11);
+    titulares.forEach(j => {
+        html += `<div class="scorer-item"><span>#${j.numero} ${j.nome}</span><span>${j.posicao} | ⭐${j.overall} | ⚽${j.gols || 0}</span></div>`;
+    });
+    html += `<h3 style="margin-top:20px">🔄 Reservas</h3>`;
+    const reservas = carreira.jogadores.slice(11);
+    reservas.forEach(j => {
+        html += `<div class="scorer-item"><span>#${j.numero} ${j.nome}</span><span>${j.posicao} | ⭐${j.overall} | ⚽${j.gols || 0}</span></div>`;
+    });
+    html += `</div>`;
+    container.innerHTML = html;
+}
+
+function showCareerPanel(panelId) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById(`${panelId}Panel`).classList.add('active');
+    
+    if(panelId === 'calendar') atualizarCalendar();
+    if(panelId === 'table') atualizarTabela();
+    if(panelId === 'scorers') atualizarArtilharia();
+    if(panelId === 'squad') atualizarElenco();
+}
+
+function abrirModalSimulacao(gameIndex) {
+    currentGameIndex = gameIndex;
+    const jogo = carreira.jogos[gameIndex];
+    document.getElementById('modalGameTitle').innerHTML = `⚽ ${jogo.mandante} vs ${jogo.visitante}`;
+    document.getElementById('modalGameInfo').innerHTML = `<p>🏆 Campeonato: ${LIGAS[ligaSelecionada].nome}</p><p>📅 Rodada ${jogo.rodada}</p>`;
+    document.getElementById('modalResultArea').style.display = 'none';
+    document.getElementById('simModal').style.display = 'flex';
+}
+
+function fecharModal() {
+    if(modalInterval) clearInterval(modalInterval);
+    document.getElementById('simModal').style.display = 'none';
+}
+
+function simularModalRapida() {
+    const jogo = carreira.jogos[currentGameIndex];
+    if(jogo.realizado) {
+        alert("Este jogo já foi realizado!");
+        fecharModal();
+        return;
+    }
+    simularJogo(jogo, 'rapida', () => {
+        setTimeout(() => {
+            fecharModal();
+            atualizarCalendar();
+            atualizarTabela();
+            atualizarArtilharia();
+        }, 1000);
+    });
+    document.getElementById('modalResultArea').innerHTML = '<div style="text-align:center;padding:20px">⚽ Simulando partida...</div>';
+    document.getElementById('modalResultArea').style.display = 'block';
+}
+
+function simularModalMinuto() {
+    const jogo = carreira.jogos[currentGameIndex];
+    if(jogo.realizado) {
+        alert("Este jogo já foi realizado!");
+        fecharModal();
+        return;
+    }
+    const forcaM = FORCA_TIMES[jogo.mandante] || 80;
+    const forcaV = FORCA_TIMES[jogo.visitante] || 80;
+    const probM = forcaM / (forcaM + forcaV);
+    simularMinutoAMinuto(jogo, probM, () => {
+        setTimeout(() => {
+            fecharModal();
+            atualizarCalendar();
+            atualizarTabela();
+            atualizarArtilharia();
+        }, 1000);
+    });
+}
+
+function simularModalBolinhas() {
+    const jogo = carreira.jogos[currentGameIndex];
+    if(jogo.realizado) {
+        alert("Este jogo já foi realizado!");
+        fecharModal();
+        return;
+    }
+    const forcaM = FORCA_TIMES[jogo.mandante] || 80;
+    const forcaV = FORCA_TIMES[jogo.visitante] || 80;
+    const probM = forcaM / (forcaM + forcaV);
+    simularBolinhas(jogo, probM, () => {
+        setTimeout(() => {
+            fecharModal();
+            atualizarCalendar();
+            atualizarTabela();
+            atualizarArtilharia();
+        }, 1000);
+    });
+}
+
+function simularProximoJogo() {
+    const naoRealizados = carreira.jogos.filter(j => !j.realizado);
+    if(naoRealizados.length === 0) {
+        alert("🏆 PARABÉNS! Temporada concluída!");
+        return;
+    }
+    const proximoJogo = naoRealizados[0];
+    const index = carreira.jogos.findIndex(j => j.id === proximoJogo.id);
+    abrirModalSimulacao(index);
+}
+
+function simularProximos5Jogos() {
+    const naoRealizados = carreira.jogos.filter(j => !j.realizado);
+    const quantidade = Math.min(5, naoRealizados.length);
+    if(quantidade === 0) {
+        alert("🏆 Temporada concluída!");
+        return;
+    }
+    
+    for(let i=0; i<quantidade; i++) {
+        const jogo = naoRealizados[i];
+        const forcaM = FORCA_TIMES[jogo.mandante] || 80;
+        const forcaV = FORCA_TIMES[jogo.visitante] || 80;
+        const probM = forcaM / (forcaM + forcaV);
+        let golsM = 0, golsV = 0;
+        for(let i=0;i<90;i+=10) {
+            if(Math.random() < probM * 0.3) golsM++;
+            if(Math.random() < (1-probM) * 0.25) golsV++;
+        }
+        finalizarJogo(jogo, golsM, golsV);
+    }
+    atualizarCalendar();
+    atualizarTabela();
+    atualizarArtilharia();
+    alert(`✅ ${quantidade} jogos simulados!`);
+}
+
+function simularRestanteTemporada() {
+    const naoRealizados = carreira.jogos.filter(j => !j.realizado);
+    if(naoRealizados.length === 0) {
+        alert("🏆 Temporada já concluída!");
+        return;
+    }
+    
+    for(const jogo of naoRealizados) {
+        const forcaM = FORCA_TIMES[jogo.mandante] || 80;
+        const forcaV = FORCA_TIMES[jogo.visitante] || 80;
+        const probM = forcaM / (forcaM + forcaV);
+        let golsM = 0, golsV = 0;
+        for(let i=0;i<90;i+=10) {
+            if(Math.random() < probM * 0.3) golsM++;
+            if(Math.random() < (1-probM) * 0.25) golsV++;
+        }
+        finalizarJogo(jogo, golsM, golsV);
+    }
+    atualizarCalendar();
+    atualizarTabela();
+    atualizarArtilharia();
+    
+    const campeao = Object.entries(carreira.tabela).sort((a,b) => b[1].pontos - a[1].pontos)[0];
+    alert(`🏆 TEMPORADA FINALIZADA! 🏆\n\nCAMPEÃO: ${campeao[0]} com ${campeao[1].pontos} pontos!\n\n${timeSelecionado} terminou em ${Object.entries(carreira.tabela).findIndex(([t]) => t === timeSelecionado) + 1}º lugar.`);
+}
+
+carregarLigas();
+</script>
+</body>
+</html>
